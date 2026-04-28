@@ -2,7 +2,7 @@ import apiClient from './client';
 
 export const authAPI = {
   login: (email, senha) => apiClient.post('/auth/login', { email, senha }),
-  refresh: (token) => apiClient.post(`/auth/refresh?token=${encodeURIComponent(token)}`),
+  refresh: (token) => apiClient.post('/auth/refresh', { token }),
 };
 
 export const livrosAPI = {
