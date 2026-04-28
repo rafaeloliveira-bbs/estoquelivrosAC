@@ -12,6 +12,10 @@ export const livrosAPI = {
   atualizar: (id, livro) => apiClient.put(`/livros/${id}`, livro),
   deletar: (id) => apiClient.delete(`/livros/${id}`),
   buscar: (termo, skip = 0, limit = 100) => apiClient.get('/livros/buscar', { params: { termo, skip, limit } }),
+  importarCSV: (formData) => apiClient.post('/livros/importar-csv', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  }),
+  baixarTemplateCSV: () => apiClient.get('/livros/template-csv', { responseType: 'blob' }),
 };
 
 export const movimentacoesAPI = {

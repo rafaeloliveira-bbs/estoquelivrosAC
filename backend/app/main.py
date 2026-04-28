@@ -41,10 +41,43 @@ app.include_router(categorias.router)
 app.include_router(filiais.router)
 
 
+def _migrar_colunas_livro():
+    """Adiciona colunas novas à tabela livro se ainda não existirem."""
+    from sqlalchemy import text
+    from app.database import engine, _is_sqlite
+    novas_colunas = [
+        ("codigo_item", "VARCHAR(50)"),
+        ("fornecedor", "VARCHAR(150)"),
+        ("editora", "VARCHAR(150)"),
+        ("classificacao", "VARCHAR(100)"),
+        ("tipo_material", "VARCHAR(100)"),
+        ("grade", "VARCHAR(100)"),
+        ("descontinuado", "BOOLEAN DEFAULT FALSE"),
+    ]
+    with engine.connect() as conn:
+        for col, tipo in novas_colunas:
+            try:
+                if _is_sqlite:
+                    conn.execute(text(f"ALTER TABLE livro ADD COLUMN {col} {tipo}"))
+                else:
+                    conn.execute(text(f"ALTER TABLE livro ADD COLUMN IF NOT EXISTS {col} {tipo}"))
+                conn.commit()
+            except Exception:
+                conn.rollback()
+        if not _is_sqlite:
+            for col in ("isbn", "autor"):
+                try:
+                    conn.execute(text(f"ALTER TABLE livro ALTER COLUMN {col} DROP NOT NULL"))
+                    conn.commit()
+                except Exception:
+                    conn.rollback()
+
+
 @app.on_event("startup")
 async def startup_event():
     try:
         init_db()
+        _migrar_colunas_livro()
     except Exception as e:
         logger.error(f"init_db falhou: {e}")
     if settings.SECRET_KEY == "dev-insecure-change-in-production":
