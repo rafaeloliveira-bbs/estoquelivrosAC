@@ -82,7 +82,7 @@ export default function Movimentacoes() {
     setLoadingHistorico(true);
     try {
       const res = await relatoriosAPI.movimentacoes(dataInicio || undefined, dataFim || undefined);
-      setHistorico(res.data);
+      setHistorico(res.data.movimentacoes || []);
     } catch {
       setHistorico([]);
     } finally {

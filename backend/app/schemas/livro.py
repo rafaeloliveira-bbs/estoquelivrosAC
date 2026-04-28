@@ -11,7 +11,7 @@ class LivroBase(BaseModel):
     preco_custo: Decimal = Decimal("0")
     estoque_minimo: int = 0
     filial_id: int
-    codigo_item: Optional[str] = None
+    codigo_item: Optional[int] = None
     fornecedor: Optional[str] = None
     editora: Optional[str] = None
     classificacao: Optional[str] = None
@@ -30,7 +30,7 @@ class LivroAtualizar(BaseModel):
     preco_custo: Optional[Decimal] = None
     estoque_minimo: Optional[int] = None
     status: Optional[str] = None
-    codigo_item: Optional[str] = None
+    codigo_item: Optional[int] = None
     fornecedor: Optional[str] = None
     editora: Optional[str] = None
     classificacao: Optional[str] = None

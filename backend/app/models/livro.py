@@ -10,7 +10,7 @@ class Livro(Base):
     filial_id = Column(Integer, ForeignKey("filial.id"), nullable=False)
     categoria_id = Column(Integer, ForeignKey("categoria.id"), nullable=True)
 
-    codigo_item = Column(String(50), nullable=True, index=True)
+    codigo_item = Column(Integer, nullable=True, index=True)
     titulo = Column(String(255), nullable=False)
     autor = Column(String(150), nullable=True)
     isbn = Column(String(20), unique=True, nullable=True, index=True)

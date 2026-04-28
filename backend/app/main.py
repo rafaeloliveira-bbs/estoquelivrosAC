@@ -46,7 +46,7 @@ def _migrar_colunas_livro():
     from sqlalchemy import text
     from app.database import engine, _is_sqlite
     novas_colunas = [
-        ("codigo_item", "VARCHAR(50)"),
+        ("codigo_item", "INTEGER"),
         ("fornecedor", "VARCHAR(150)"),
         ("editora", "VARCHAR(150)"),
         ("classificacao", "VARCHAR(100)"),
@@ -71,6 +71,14 @@ def _migrar_colunas_livro():
                     conn.commit()
                 except Exception:
                     conn.rollback()
+            try:
+                conn.execute(text(
+                    "ALTER TABLE livro ALTER COLUMN codigo_item TYPE INTEGER "
+                    "USING NULLIF(codigo_item, '')::INTEGER"
+                ))
+                conn.commit()
+            except Exception:
+                conn.rollback()
 
 
 @app.on_event("startup")

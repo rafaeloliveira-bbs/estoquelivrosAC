@@ -73,7 +73,12 @@ async def importar_csv(
                 erros.append(f"Linha {i}: campo 'Títulos' obrigatório")
                 continue
 
-            codigo_item = row.get("Item", "").strip() or None
+            _codigo_raw = row.get("Item", "").strip()
+            try:
+                codigo_item = int(_codigo_raw) if _codigo_raw else None
+            except ValueError:
+                erros.append(f"Linha {i}: 'Item' deve ser numérico (recebido: '{_codigo_raw}')")
+                continue
             isbn_13 = row.get("ISBN 13", "").strip() or None
             desc_str = row.get("Descontinuado?", "").strip().lower()
             descontinuado = desc_str in ("sim", "yes", "true", "1", "s")

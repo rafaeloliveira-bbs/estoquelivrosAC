@@ -1,4 +1,5 @@
 from sqlalchemy.orm import Session
+from sqlalchemy import cast, String
 from app.models.livro import Livro
 from app.schemas.livro import LivroCriar, LivroAtualizar
 
@@ -15,7 +16,7 @@ def obter_livro_por_id(db: Session, livro_id: int):
 def obter_livro_por_isbn(db: Session, isbn: str):
     return db.query(Livro).filter(Livro.isbn == isbn).first()
 
-def obter_livro_por_codigo(db: Session, codigo_item: str, filial_id: int):
+def obter_livro_por_codigo(db: Session, codigo_item: int, filial_id: int):
     return db.query(Livro).filter(
         Livro.codigo_item == codigo_item,
         Livro.filial_id == filial_id
@@ -37,7 +38,7 @@ def pesquisar_livros(db: Session, filial_id: int, termo: str, skip: int = 0, lim
         Livro.titulo.ilike(t) |
         Livro.autor.ilike(t) |
         Livro.isbn.ilike(t) |
-        Livro.codigo_item.ilike(t) |
+        cast(Livro.codigo_item, String).ilike(t) |
         Livro.fornecedor.ilike(t) |
         Livro.editora.ilike(t)
     )
