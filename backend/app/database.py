@@ -9,11 +9,13 @@ _db_url = settings.DATABASE_URL
 if not _is_sqlite and _db_url.startswith("postgresql://"):
     _db_url = _db_url.replace("postgresql://", "postgresql+psycopg://", 1)
 
-# NullPool para todos os casos: serverless não mantém conexões entre invocações
+_connect_args = {} if _is_sqlite else {"sslmode": "require"}
+
 engine = create_engine(
     _db_url,
     echo=settings.DEBUG,
     poolclass=NullPool,
+    connect_args=_connect_args,
 )
 
 # Session factory
