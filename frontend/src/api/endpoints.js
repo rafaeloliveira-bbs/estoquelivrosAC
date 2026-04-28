@@ -15,6 +15,9 @@ export const livrosAPI = {
   importarCSV: (formData) => apiClient.post('/livros/importar-csv', formData, {
     headers: { 'Content-Type': 'multipart/form-data' },
   }),
+  previewCSV: (formData) => apiClient.post('/livros/preview-csv', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  }),
   baixarTemplateCSV: () => apiClient.get('/livros/template-csv', { responseType: 'blob' }),
   limparTodos: () => apiClient.delete('/livros/limpar-todos'),
 };

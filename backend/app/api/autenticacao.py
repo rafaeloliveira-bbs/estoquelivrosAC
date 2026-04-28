@@ -1,11 +1,15 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Request
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
+from slowapi import Limiter
+from slowapi.util import get_remote_address
 from app.database import get_db
 from app.schemas.usuario import UsuarioLogin, TokenResposta, UsuarioResposta, UsuarioCriar, RefreshRequest
 from app.crud.usuario import obter_usuario_por_email, obter_usuario_por_id, criar_usuario, atualizar_ultimo_acesso
 from app.auth.jwt import verify_password, create_access_token, create_refresh_token, decode_token
 from app.config import logger
+
+limiter = Limiter(key_func=get_remote_address)
 
 router = APIRouter(prefix="/auth", tags=["autenticação"])
 
@@ -62,13 +66,15 @@ async def _autenticar_usuario(email: str, senha: str, db: Session) -> dict:
 
 
 @router.post("/login", response_model=TokenResposta)
-async def login(credenciais: UsuarioLogin, db: Session = Depends(get_db)):
+@limiter.limit("5/minute")
+async def login(request: Request, credenciais: UsuarioLogin, db: Session = Depends(get_db)):
     """Login via JSON body."""
     return await _autenticar_usuario(credenciais.email, credenciais.senha, db)
 
 
 @router.post("/token", response_model=TokenResposta)
-async def token(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
+@limiter.limit("5/minute")
+async def token(request: Request, form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
     """Login via form data — compatível com OAuth2 e o botão Authorize do Swagger."""
     return await _autenticar_usuario(form_data.username, form_data.password, db)
 

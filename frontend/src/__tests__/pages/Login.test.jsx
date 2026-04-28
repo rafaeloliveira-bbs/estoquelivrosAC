@@ -29,10 +29,10 @@ describe('Login', () => {
     expect(screen.getByLabelText(/senha/i)).toBeInTheDocument();
   });
 
-  it('exibe credenciais de teste como valores padrão', () => {
+  it('exibe campos vazios por padrão', () => {
     render(<MemoryRouter><Login /></MemoryRouter>);
-    expect(screen.getByLabelText(/email/i)).toHaveValue('admin@estoque.com');
-    expect(screen.getByLabelText(/senha/i)).toHaveValue('admin123');
+    expect(screen.getByLabelText(/email/i)).toHaveValue('');
+    expect(screen.getByLabelText(/senha/i)).toHaveValue('');
   });
 
   it('armazena tokens e redireciona para / após login bem-sucedido', async () => {
@@ -41,6 +41,8 @@ describe('Login', () => {
     });
 
     render(<MemoryRouter><Login /></MemoryRouter>);
+    await userEvent.type(screen.getByLabelText(/email/i), 'admin@estoque.com');
+    await userEvent.type(screen.getByLabelText(/senha/i), 'admin123');
     await userEvent.click(screen.getByRole('button', { name: /entrar/i }));
 
     await waitFor(() => {
@@ -54,6 +56,8 @@ describe('Login', () => {
     authAPI.login.mockRejectedValueOnce(new Error('Unauthorized'));
 
     render(<MemoryRouter><Login /></MemoryRouter>);
+    await userEvent.type(screen.getByLabelText(/email/i), 'wrong@email.com');
+    await userEvent.type(screen.getByLabelText(/senha/i), 'wrongpass');
     await userEvent.click(screen.getByRole('button', { name: /entrar/i }));
 
     await waitFor(() => {
@@ -65,6 +69,8 @@ describe('Login', () => {
     authAPI.login.mockImplementationOnce(() => new Promise(() => {}));
 
     render(<MemoryRouter><Login /></MemoryRouter>);
+    await userEvent.type(screen.getByLabelText(/email/i), 'admin@estoque.com');
+    await userEvent.type(screen.getByLabelText(/senha/i), 'admin123');
     await userEvent.click(screen.getByRole('button', { name: /entrar/i }));
 
     expect(screen.getByRole('button', { name: /autenticando/i })).toBeDisabled();

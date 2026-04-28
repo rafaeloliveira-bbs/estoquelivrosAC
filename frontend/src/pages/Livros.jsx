@@ -20,7 +20,8 @@ export default function Livros() {
   const [erro, setErro] = useState('');
   const [sucesso, setSucesso] = useState('');
   const [importando, setImportando] = useState(false);
-  const [resultadoImport, setResultadoImport] = useState(null);
+  const [preview, setPreview] = useState(null);
+  const [selectedFile, setSelectedFile] = useState(null);
   const fileInputRef = useRef(null);
 
   const carregarLivros = useCallback(async () => {
@@ -166,24 +167,50 @@ export default function Livros() {
     }
   };
 
-  const handleImportarCSV = async (e) => {
+  const handleFileSelect = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    
+    setSelectedFile(file);
+    setErro('');
+    setPreview(null);
+    
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      const res = await livrosAPI.previewCSV(formData);
+      setPreview(res.data);
+    } catch (err) {
+      setErro(err.response?.data?.detail || 'Erro ao analisar arquivo');
+      e.target.value = '';
+    }
+  };
+
+  const handleConfirmarImportacao = async () => {
+    if (!selectedFile) return;
+    
     setImportando(true);
     setResultadoImport(null);
     setErro('');
     try {
       const formData = new FormData();
-      formData.append('file', file);
+      formData.append('file', selectedFile);
       const res = await livrosAPI.importarCSV(formData);
       setResultadoImport(res.data);
+      setPreview(null);
+      setSelectedFile(null);
       carregarLivros();
     } catch (err) {
       setErro(err.response?.data?.detail || 'Erro ao importar planilha');
     } finally {
       setImportando(false);
-      e.target.value = '';
     }
+  };
+
+  const handleCancelarPreview = () => {
+    setPreview(null);
+    setSelectedFile(null);
+    fileInputRef.current.value = '';
   };
 
   return (
@@ -205,7 +232,7 @@ export default function Livros() {
             type="file"
             accept=".csv"
             style={{ display: 'none' }}
-            onChange={handleImportarCSV}
+            onChange={handleFileSelect}
           />
           <button className="btn-primary" onClick={abrirCriar}>+ Novo Livro</button>
         </div>
@@ -224,6 +251,74 @@ export default function Livros() {
             </ul>
           )}
           <button className="btn-close-result" onClick={() => setResultadoImport(null)}>✕</button>
+        </div>
+      )}
+
+      {preview && (
+        <div className="preview-section">
+          <h2>Pré-visualização da Importação</h2>
+          
+          {preview.warnings.length > 0 && (
+            <div className="warnings">
+              <h3>⚠️ Avisos:</h3>
+              <ul>
+                {preview.warnings.map((warning, idx) => (
+                  <li key={idx}>{warning}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          <div className="mapping-info">
+            <h3>Mapeamento de Colunas:</h3>
+            <div className="mapping-grid">
+              {Object.entries(preview.column_mapping).map(([field, colName]) => (
+                <div key={field} className={`mapping-item ${colName ? 'mapped' : 'unmapped'}`}>
+                  <strong>{field}:</strong> {colName || 'Não encontrado'}
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="preview-table">
+            <h3>Primeiras {preview.mapped_preview.length} linhas (dados processados):</h3>
+            <table>
+              <thead>
+                <tr>
+                  {Object.keys(preview.mapped_preview[0] || {}).map(field => (
+                    <th key={field}>{field}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {preview.mapped_preview.map((row, idx) => (
+                  <tr key={idx}>
+                    {Object.values(row).map((value, cellIdx) => (
+                      <td key={cellIdx} className={typeof value === 'string' && value.startsWith('Erro:') ? 'error-cell' : ''}>
+                        {value === null || value === undefined ? '-' : String(value)}
+                      </td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          <div className="preview-actions">
+            <button 
+              className="btn-primary" 
+              onClick={handleConfirmarImportacao}
+              disabled={importando}
+            >
+              {importando ? 'Importando...' : 'Confirmar Importação'}
+            </button>
+            <button 
+              className="btn-secondary" 
+              onClick={handleCancelarPreview}
+            >
+              Cancelar
+            </button>
+          </div>
         </div>
       )}
 

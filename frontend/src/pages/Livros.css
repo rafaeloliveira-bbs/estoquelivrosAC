@@ -299,6 +299,146 @@
   box-shadow: 0 0 0 3px rgba(246, 140, 61, 0.12);
 }
 
+/* Preview Section */
+.preview-section {
+  background: #f9f7f5;
+  border: 2px solid #e0cfc9;
+  border-radius: 12px;
+  padding: 1.5rem;
+  margin-bottom: 2rem;
+}
+
+.preview-section h2 {
+  color: #554239;
+  margin-bottom: 1.5rem;
+  font-size: 1.5rem;
+}
+
+.warnings {
+  background: #fff3cd;
+  border: 1px solid #ffeaa7;
+  border-radius: 8px;
+  padding: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.warnings h3 {
+  color: #856404;
+  margin-bottom: 0.5rem;
+}
+
+.warnings ul {
+  margin: 0;
+  padding-left: 1.5rem;
+}
+
+.warnings li {
+  color: #856404;
+}
+
+.mapping-info {
+  margin-bottom: 1.5rem;
+}
+
+.mapping-info h3 {
+  color: #554239;
+  margin-bottom: 1rem;
+}
+
+.mapping-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 0.75rem;
+}
+
+.mapping-item {
+  padding: 0.5rem 0.75rem;
+  border-radius: 6px;
+  font-size: 0.9rem;
+}
+
+.mapping-item.mapped {
+  background: #d4edda;
+  border: 1px solid #c3e6cb;
+  color: #155724;
+}
+
+.mapping-item.unmapped {
+  background: #f8d7da;
+  border: 1px solid #f5c6cb;
+  color: #721c24;
+}
+
+.preview-table {
+  margin-bottom: 1.5rem;
+}
+
+.preview-table h3 {
+  color: #554239;
+  margin-bottom: 1rem;
+}
+
+.preview-table table {
+  width: 100%;
+  border-collapse: collapse;
+  background: white;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.preview-table th,
+.preview-table td {
+  padding: 0.75rem;
+  text-align: left;
+  border-bottom: 1px solid #e0cfc9;
+}
+
+.preview-table th {
+  background: #f5f0ed;
+  font-weight: 600;
+  color: #554239;
+}
+
+.preview-table td.error-cell {
+  background: #f8d7da;
+  color: #721c24;
+}
+
+.preview-actions {
+  display: flex;
+  gap: 1rem;
+  justify-content: center;
+}
+
+.preview-actions button {
+  padding: 0.75rem 1.5rem;
+  border: none;
+  border-radius: 8px;
+  font-size: 1rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.preview-actions .btn-primary {
+  background: #f68c3d;
+  color: white;
+}
+
+.preview-actions .btn-primary:hover {
+  background: #e67e39;
+}
+
+.preview-actions .btn-secondary {
+  background: #e0cfc9;
+  color: #554239;
+}
+
+.preview-actions .btn-secondary:hover {
+  background: #d4c4bd;
+}
+
 .modal-actions {
   display: flex;
   justify-content: flex-end;

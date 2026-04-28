@@ -47,13 +47,100 @@ async def baixar_template_csv(user=Depends(get_current_user)):
     )
 
 
-@router.post("/importar-csv")
-async def importar_csv(
+@router.post("/preview-csv")
+async def preview_csv(
     file: UploadFile = File(...),
     db: Session = Depends(get_db),
     user=Depends(requer_role(["operador", "admin"])),
 ):
-    """Importa livros a partir de um arquivo CSV."""
+    """Pré-visualiza o conteúdo do CSV antes da importação."""
+    content = await file.read()
+    try:
+        decoded = content.decode("utf-8-sig")
+    except UnicodeDecodeError:
+        decoded = content.decode("latin-1")
+
+    reader = csv.DictReader(io.StringIO(decoded))
+    
+    # Obter cabeçalhos
+    fieldnames = reader.fieldnames or []
+    
+    # Ler primeiras 5 linhas para preview
+    preview_rows = []
+    for i, row in enumerate(reader):
+        if i >= 5:  # Máximo 5 linhas
+            break
+        preview_rows.append(row)
+    
+    # Mapear colunas encontradas
+    column_mapping = {
+        "codigo_item": None,
+        "titulo": None,
+        "fornecedor": None,
+        "editora": None,
+        "classificacao": None,
+        "tipo_material": None,
+        "grade": None,
+        "isbn": None,
+        "descontinuado": None,
+    }
+    
+    # Tentar mapear colunas automaticamente
+    for col in fieldnames:
+        col_lower = col.lower().strip()
+        if col_lower in ["item", "código item", "codigo_item", "código"]:
+            column_mapping["codigo_item"] = col
+        elif col_lower in ["títulos", "titulo", "título"]:
+            column_mapping["titulo"] = col
+        elif col_lower in ["fornecedor"]:
+            column_mapping["fornecedor"] = col
+        elif col_lower in ["editora"]:
+            column_mapping["editora"] = col
+        elif col_lower in ["classificação", "classificacao"]:
+            column_mapping["classificacao"] = col
+        elif col_lower in ["tipo do material", "tipo_material", "tipo"]:
+            column_mapping["tipo_material"] = col
+        elif col_lower in ["grade"]:
+            column_mapping["grade"] = col
+        elif col_lower in ["isbn 13", "isbn", "isbn13"]:
+            column_mapping["isbn"] = col
+        elif col_lower in ["descontinuado?", "descontinuado"]:
+            column_mapping["descontinuado"] = col
+    
+    # Validar mapeamento
+    warnings = []
+    if not column_mapping["titulo"]:
+        warnings.append("Coluna obrigatória 'Títulos' não encontrada")
+    
+    # Preparar preview dos dados mapeados
+    mapped_preview = []
+    for row in preview_rows:
+        mapped_row = {}
+        for field, col_name in column_mapping.items():
+            if col_name:
+                value = row.get(col_name, "")
+                if field == "codigo_item":
+                    try:
+                        mapped_row[field] = int(value) if value else None
+                    except ValueError:
+                        mapped_row[field] = f"Erro: '{value}' não é numérico"
+                elif field == "descontinuado":
+                    val_lower = value.lower().strip()
+                    mapped_row[field] = val_lower in ("sim", "yes", "true", "1", "s")
+                else:
+                    mapped_row[field] = value
+            else:
+                mapped_row[field] = None
+        mapped_preview.append(mapped_row)
+    
+    return {
+        "fieldnames": fieldnames,
+        "column_mapping": column_mapping,
+        "preview_rows": preview_rows,
+        "mapped_preview": mapped_preview,
+        "warnings": warnings,
+        "total_rows": len(preview_rows) + 1,  # +1 para cabeçalho
+    }
     content = await file.read()
     try:
         decoded = content.decode("utf-8-sig")
@@ -66,6 +153,10 @@ async def importar_csv(
     atualizados = 0
     erros = []
 
+    # Log dos cabeçalhos encontrados
+    fieldnames = reader.fieldnames
+    logger.info(f"Importação CSV - Cabeçalhos encontrados: {fieldnames}")
+
     for i, row in enumerate(reader, start=2):
         try:
             titulo = row.get("Títulos", "").strip()
@@ -73,7 +164,14 @@ async def importar_csv(
                 erros.append(f"Linha {i}: campo 'Títulos' obrigatório")
                 continue
 
-            _codigo_raw = row.get("Item", "").strip()
+            # Tentar múltiplas possibilidades para o código do item
+            _codigo_raw = (
+                row.get("Item", "").strip() or
+                row.get("Código Item", "").strip() or
+                row.get("codigo_item", "").strip() or
+                row.get("Código", "").strip()
+            )
+            logger.debug(f"Linha {i}: Tentando extrair código do item de: '{_codigo_raw}'")
             try:
                 codigo_item = int(_codigo_raw) if _codigo_raw else None
             except ValueError:

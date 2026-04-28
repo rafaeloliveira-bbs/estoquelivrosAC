@@ -8,7 +8,7 @@ class Settings(BaseSettings):
     DATABASE_URL: str = "postgresql://postgres:postgres@localhost:5432/estoque_db"
     
     # Security
-    SECRET_KEY: str = "dev-insecure-change-in-production"
+    SECRET_KEY: str = "MaropgyqjYo_VW0ja8fGP3aqYagGV2b3599AcWiy3e8"  # Gerada com secrets.token_urlsafe(32)
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60
     REFRESH_TOKEN_EXPIRE_DAYS: int = 7

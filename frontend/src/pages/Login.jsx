@@ -6,8 +6,8 @@ import logo from '../logodef.jpeg';
 import './Login.css';
 
 export default function Login() {
-  const [email, setEmail] = useState('admin@estoque.com');
-  const [senha, setSenha] = useState('admin123');
+  const [email, setEmail] = useState('');
+  const [senha, setSenha] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const navigate = useNavigate();
