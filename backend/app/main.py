@@ -35,7 +35,10 @@ app.include_router(filiais.router)
 @app.on_event("startup")
 async def startup_event():
     """Run on startup"""
-    init_db()
+    try:
+        init_db()
+    except Exception as e:
+        logger.error(f"init_db falhou: {e}")
     logger.info("Aplicação iniciada")
     logger.info(f"Debug mode: {settings.DEBUG}")
 
@@ -66,7 +69,7 @@ async def exception_handler(request, exc):
     logger.error(f"Exception: {str(exc)}")
     return JSONResponse(
         status_code=500,
-        content={"detail": "Erro interno do servidor"}
+        content={"detail": str(exc)}
     )
 
 if __name__ == "__main__":
