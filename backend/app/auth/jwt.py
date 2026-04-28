@@ -23,23 +23,23 @@ def create_access_token(user_id: int, role: str, filial_id: int, expires_delta: 
         expire = datetime.utcnow() + timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
     
     payload = {
-        "sub": user_id,
+        "sub": str(user_id),
         "role": role,
         "filial_id": filial_id,
         "exp": expire,
         "type": "access"
     }
-    
+
     encoded_jwt = jwt.encode(payload, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
     expires_in = int((expire - datetime.utcnow()).total_seconds())
-    
+
     return encoded_jwt, expires_in
 
 def create_refresh_token(user_id: int, role: str, filial_id: int) -> str:
     """Create JWT refresh token"""
     expire = datetime.utcnow() + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS)
     payload = {
-        "sub": user_id,
+        "sub": str(user_id),
         "role": role,
         "filial_id": filial_id,
         "exp": expire,
@@ -55,12 +55,12 @@ def decode_token(token: str) -> Optional[dict]:
         role = payload.get("role")
         filial_id = payload.get("filial_id")
         token_type = payload.get("type", "access")
-        
+
         if user_id is None:
             return None
-        
+
         return {
-            "user_id": user_id,
+            "user_id": int(user_id),
             "role": role,
             "filial_id": filial_id,
             "type": token_type
