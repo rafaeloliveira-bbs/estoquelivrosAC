@@ -5,9 +5,6 @@ from app.config import settings, logger
 from app.database import init_db
 from app.api import autenticacao, livros, movimentacoes, relatorios, usuarios, categorias, filiais
 
-# Initialize database
-init_db()
-
 # Create FastAPI app
 app = FastAPI(
     title="Estoque Livros AC",
@@ -38,6 +35,7 @@ app.include_router(filiais.router)
 @app.on_event("startup")
 async def startup_event():
     """Run on startup"""
+    init_db()
     logger.info("Aplicação iniciada")
     logger.info(f"Debug mode: {settings.DEBUG}")
 
