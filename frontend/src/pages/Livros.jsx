@@ -20,6 +20,7 @@ export default function Livros() {
   const [erro, setErro] = useState('');
   const [sucesso, setSucesso] = useState('');
   const [importando, setImportando] = useState(false);
+  const [resultadoImport, setResultadoImport] = useState(null);
   const [preview, setPreview] = useState(null);
   const [selectedFile, setSelectedFile] = useState(null);
   const fileInputRef = useRef(null);
