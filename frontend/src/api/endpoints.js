@@ -16,6 +16,7 @@ export const livrosAPI = {
     headers: { 'Content-Type': 'multipart/form-data' },
   }),
   baixarTemplateCSV: () => apiClient.get('/livros/template-csv', { responseType: 'blob' }),
+  limparTodos: () => apiClient.delete('/livros/limpar-todos'),
 };
 
 export const movimentacoesAPI = {

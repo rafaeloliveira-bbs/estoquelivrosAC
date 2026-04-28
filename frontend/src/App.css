@@ -38,10 +38,24 @@ body {
 }
 
 .nav-brand-name {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.15;
+}
+
+.brand-bright {
   font-size: 1.15rem;
-  font-weight: 700;
+  font-weight: 800;
   color: #ffc20e;
-  letter-spacing: 0.01em;
+  letter-spacing: 0.02em;
+}
+
+.brand-sub {
+  font-size: 0.72rem;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.75);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
 }
 
 .nav-menu {

@@ -116,6 +116,18 @@ async def importar_csv(
     return {"criados": criados, "atualizados": atualizados, "erros": erros}
 
 
+@router.delete("/limpar-todos")
+async def limpar_todos_livros(
+    db: Session = Depends(get_db),
+    user=Depends(requer_role(["admin"])),
+):
+    """Remove permanentemente todos os livros da filial (uso administrativo)."""
+    total = db.query(Livro).filter(Livro.filial_id == user["filial_id"]).delete()
+    db.commit()
+    logger.warning(f"Limpeza total: {total} livros removidos da filial {user['filial_id']}")
+    return {"removidos": total}
+
+
 @router.post("/", response_model=LivroResposta)
 async def criar_novo_livro(
     livro: LivroCriar,

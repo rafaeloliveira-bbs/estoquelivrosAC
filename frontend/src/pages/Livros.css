@@ -143,6 +143,21 @@
 
 .btn-secondary:hover { background: #e0d4ce; }
 
+.btn-danger {
+  background: #fdecea;
+  color: #c0392b;
+  border: 1.5px solid #f5c6c2;
+  padding: 0.6rem 1.2rem;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  font-weight: 600;
+  transition: background 0.2s, border-color 0.2s;
+  width: auto;
+}
+
+.btn-danger:hover { background: #fad4d1; border-color: #ef9a95; }
+
 .btn-edit {
   background: #fff3e0;
   color: #e45e26;

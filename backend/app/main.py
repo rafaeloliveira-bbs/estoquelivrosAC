@@ -7,7 +7,7 @@ from app.database import init_db
 from app.api import autenticacao, livros, movimentacoes, relatorios, usuarios, categorias, filiais
 
 app = FastAPI(
-    title="Estoque Livros AC",
+    title="Bright — Estoque de Livros",
     description="Sistema de Gestão de Estoque de Livros",
     version="1.0.0",
     docs_url="/docs",

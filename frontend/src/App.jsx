@@ -41,7 +41,10 @@ function Navigation() {
     <nav className="navbar">
       <div className="nav-brand" onClick={() => navigate('/')} style={{ cursor: 'pointer' }}>
         <img src={logo} alt="Logo" className="nav-logo" />
-        <span className="nav-brand-name">Estoque Livros AC</span>
+        <span className="nav-brand-name">
+          <span className="brand-bright">Bright</span>
+          <span className="brand-sub">Estoque de Livros</span>
+        </span>
       </div>
       <ul className="nav-menu">
         {navLink('/', 'Dashboard')}

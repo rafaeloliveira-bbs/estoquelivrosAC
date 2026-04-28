@@ -40,8 +40,8 @@ export default function Login() {
         <div className="login-logo-wrap">
           <img src={logo} alt="Logo Estoque Livros AC" className="login-logo" />
         </div>
-        <h1>Estoque Livros AC</h1>
-        <p className="login-subtitle">Sistema de Gestão</p>
+        <h1>Bright</h1>
+        <p className="login-subtitle">Estoque de Livros</p>
         <form onSubmit={handleSubmit}>
           <div className="form-group">
             <label htmlFor="email">Email</label>

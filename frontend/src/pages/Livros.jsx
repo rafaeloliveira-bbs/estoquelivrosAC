@@ -139,6 +139,19 @@ export default function Livros() {
     }
   };
 
+  const handleLimparTodos = async () => {
+    if (!confirm('Atenção: isso removerá TODOS os livros da filial permanentemente. Continuar?')) return;
+    if (!confirm('Tem certeza absoluta? Esta ação não pode ser desfeita.')) return;
+    try {
+      const res = await livrosAPI.limparTodos();
+      setSucesso(`${res.data.removidos} livro(s) removido(s).`);
+      carregarLivros();
+      setTimeout(() => setSucesso(''), 4000);
+    } catch (err) {
+      setErro(err.response?.data?.detail || 'Erro ao limpar livros');
+    }
+  };
+
   const handleBaixarModelo = async () => {
     try {
       const res = await livrosAPI.baixarTemplateCSV();
@@ -178,6 +191,7 @@ export default function Livros() {
       <div className="page-header">
         <h1>Livros</h1>
         <div className="header-actions">
+          <button className="btn-danger" onClick={handleLimparTodos}>Limpar todos</button>
           <button className="btn-secondary" onClick={handleBaixarModelo}>Baixar Modelo CSV</button>
           <button
             className="btn-secondary"
@@ -235,11 +249,11 @@ export default function Livros() {
                 <th>Fornecedor</th>
                 <th>Editora</th>
                 <th>Classificação</th>
-                <th>Tipo do Material</th>
+                <th>Tipo do material</th>
                 <th>Grade</th>
                 <th>ISBN 13</th>
-                <th>Estoque</th>
                 <th>Descontinuado?</th>
+                <th>Estoque</th>
                 <th>Status</th>
                 <th>Ações</th>
               </tr>
@@ -254,15 +268,16 @@ export default function Livros() {
                     <td>{l.titulo}</td>
                     <td>{l.fornecedor || '-'}</td>
                     <td>{l.editora || '-'}</td>
+                    <td>{l.classificacao || '-'}</td>
                     <td>{l.tipo_material || '-'}</td>
                     <td>{l.grade || '-'}</td>
                     <td>{l.isbn || '-'}</td>
-                    <td>{estoques[l.id] ?? '...'}</td>
                     <td>
                       <span className={`badge ${l.descontinuado ? 'badge-gray' : 'badge-green'}`}>
                         {l.descontinuado ? 'Sim' : 'Não'}
                       </span>
                     </td>
+                    <td>{estoques[l.id] ?? '...'}</td>
                     <td>
                       <span className={`badge ${l.status === 'ativo' ? 'badge-green' : 'badge-gray'}`}>
                         {l.status}
