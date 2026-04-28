@@ -29,7 +29,7 @@ async def baixar_template_csv(user=Depends(get_current_user)):
     writer = csv.DictWriter(output, fieldnames=_COLUNAS_CSV)
     writer.writeheader()
     writer.writerow({
-        "Item": "ITEM001",
+        "Item": "1",
         "Títulos": "Exemplo de Livro",
         "Fornecedor": "Distribuidora Exemplo",
         "Editora": "Editora Exemplo",
