@@ -63,6 +63,18 @@ async def health():
     """Health check endpoint"""
     return {"status": "ok"}
 
+@app.get("/debug-db", tags=["health"])
+async def debug_db():
+    """Temporary DB connection test"""
+    from sqlalchemy import text
+    from app.database import engine
+    try:
+        with engine.connect() as conn:
+            result = conn.execute(text("SELECT version()")).fetchone()
+            return {"db": "ok", "version": str(result[0])}
+    except Exception as e:
+        return {"db": "erro", "detail": str(e)}
+
 @app.exception_handler(Exception)
 async def exception_handler(request, exc):
     """Global exception handler"""
