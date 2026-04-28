@@ -17,8 +17,8 @@ from app.config import logger
 router = APIRouter(prefix="/livros", tags=["livros"])
 
 _COLUNAS_CSV = [
-    "codigo_item", "titulo", "fornecedor", "editora",
-    "classificacao", "tipo_material", "grade", "isbn_13", "descontinuado",
+    "Item", "Títulos", "Fornecedor", "Editora",
+    "Classificação", "Tipo do material", "Grade", "ISBN 13", "Descontinuado?",
 ]
 
 
@@ -29,15 +29,15 @@ async def baixar_template_csv(user=Depends(get_current_user)):
     writer = csv.DictWriter(output, fieldnames=_COLUNAS_CSV)
     writer.writeheader()
     writer.writerow({
-        "codigo_item": "ITEM001",
-        "titulo": "Exemplo de Livro",
-        "fornecedor": "Distribuidora Exemplo",
-        "editora": "Editora Exemplo",
-        "classificacao": "Literatura",
-        "tipo_material": "Livro",
-        "grade": "5o Ano",
-        "isbn_13": "9788500000000",
-        "descontinuado": "Não",
+        "Item": "ITEM001",
+        "Títulos": "Exemplo de Livro",
+        "Fornecedor": "Distribuidora Exemplo",
+        "Editora": "Editora Exemplo",
+        "Classificação": "Literatura",
+        "Tipo do material": "Livro",
+        "Grade": "5o Ano",
+        "ISBN 13": "9788500000000",
+        "Descontinuado?": "Não",
     })
     output.seek(0)
     return StreamingResponse(
@@ -68,24 +68,24 @@ async def importar_csv(
 
     for i, row in enumerate(reader, start=2):
         try:
-            titulo = row.get("titulo", "").strip()
+            titulo = row.get("Títulos", "").strip()
             if not titulo:
-                erros.append(f"Linha {i}: campo 'titulo' obrigatório")
+                erros.append(f"Linha {i}: campo 'Títulos' obrigatório")
                 continue
 
-            codigo_item = row.get("codigo_item", "").strip() or None
-            isbn_13 = row.get("isbn_13", "").strip() or None
-            desc_str = row.get("descontinuado", "").strip().lower()
+            codigo_item = row.get("Item", "").strip() or None
+            isbn_13 = row.get("ISBN 13", "").strip() or None
+            desc_str = row.get("Descontinuado?", "").strip().lower()
             descontinuado = desc_str in ("sim", "yes", "true", "1", "s")
 
             dados = {
                 "codigo_item": codigo_item,
                 "titulo": titulo,
-                "fornecedor": row.get("fornecedor", "").strip() or None,
-                "editora": row.get("editora", "").strip() or None,
-                "classificacao": row.get("classificacao", "").strip() or None,
-                "tipo_material": row.get("tipo_material", "").strip() or None,
-                "grade": row.get("grade", "").strip() or None,
+                "fornecedor": row.get("Fornecedor", "").strip() or None,
+                "editora": row.get("Editora", "").strip() or None,
+                "classificacao": row.get("Classificação", "").strip() or None,
+                "tipo_material": row.get("Tipo do material", "").strip() or None,
+                "grade": row.get("Grade", "").strip() or None,
                 "isbn": isbn_13,
                 "descontinuado": descontinuado,
                 "filial_id": user["filial_id"],

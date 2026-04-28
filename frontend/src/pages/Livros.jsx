@@ -230,22 +230,23 @@ export default function Livros() {
           <table className="data-table">
             <thead>
               <tr>
-                <th>Código</th>
-                <th>Título</th>
+                <th>Item</th>
+                <th>Títulos</th>
                 <th>Fornecedor</th>
                 <th>Editora</th>
-                <th>Tipo</th>
+                <th>Classificação</th>
+                <th>Tipo do Material</th>
                 <th>Grade</th>
                 <th>ISBN 13</th>
                 <th>Estoque</th>
-                <th>Descontinuado</th>
+                <th>Descontinuado?</th>
                 <th>Status</th>
                 <th>Ações</th>
               </tr>
             </thead>
             <tbody>
               {livros.length === 0 ? (
-                <tr><td colSpan="11" className="empty">Nenhum livro encontrado</td></tr>
+                <tr><td colSpan="12" className="empty">Nenhum livro encontrado</td></tr>
               ) : (
                 livros.map((l) => (
                   <tr key={l.id}>
