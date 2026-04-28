@@ -132,7 +132,7 @@ async def preview_csv(
             else:
                 mapped_row[field] = None
         mapped_preview.append(mapped_row)
-    
+
     return {
         "fieldnames": fieldnames,
         "column_mapping": column_mapping,
@@ -141,6 +141,15 @@ async def preview_csv(
         "warnings": warnings,
         "total_rows": len(preview_rows) + 1,  # +1 para cabeçalho
     }
+
+
+@router.post("/importar-csv")
+async def importar_csv(
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    user=Depends(requer_role(["operador", "admin"])),
+):
+    """Importa livros a partir de um arquivo CSV."""
     content = await file.read()
     try:
         decoded = content.decode("utf-8-sig")
