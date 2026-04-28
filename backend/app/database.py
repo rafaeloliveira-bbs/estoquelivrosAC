@@ -9,7 +9,7 @@ _db_url = settings.DATABASE_URL
 if not _is_sqlite and _db_url.startswith("postgresql://"):
     _db_url = _db_url.replace("postgresql://", "postgresql+psycopg://", 1)
 
-_connect_args = {} if _is_sqlite else {"sslmode": "require"}
+_connect_args = {} if _is_sqlite else {"sslmode": "require", "prepare_threshold": 0}
 
 engine = create_engine(
     _db_url,
