@@ -1,0 +1,106 @@
+from fastapi import APIRouter, Depends, HTTPException, status, Query
+from sqlalchemy.orm import Session
+from datetime import date, timedelta
+from app.database import get_db
+from app.services.relatorios import (
+    relatorio_estoque_atual,
+    relatorio_movimentacoes,
+    relatorio_top_vendas,
+    relatorio_alertas_minimo,
+    relatorio_lotes_vencimento
+)
+from app.auth.permissions import get_current_user
+from app.config import logger
+
+router = APIRouter(prefix="/relatorios", tags=["relatórios"])
+
+@router.get("/estoque-atual")
+async def estoque_atual(
+    db: Session = Depends(get_db),
+    user = Depends(get_current_user)
+):
+    """Get current stock report"""
+    relatorio = relatorio_estoque_atual(db, user["filial_id"])
+    logger.info(f"Relatório de estoque gerado: {len(relatorio)} itens")
+    return {
+        "filial_id": user["filial_id"],
+        "data_geracao": date.today().isoformat(),
+        "total_itens": len(relatorio),
+        "itens": relatorio
+    }
+
+@router.get("/movimentacoes")
+async def movimentacoes(
+    data_inicio: date = Query(None),
+    data_fim: date = Query(None),
+    db: Session = Depends(get_db),
+    user = Depends(get_current_user)
+):
+    """Get movement report"""
+    if not data_inicio:
+        data_inicio = date.today() - timedelta(days=30)
+    if not data_fim:
+        data_fim = date.today()
+    
+    relatorio = relatorio_movimentacoes(db, user["filial_id"], data_inicio, data_fim)
+    logger.info(f"Relatório de movimentações gerado: {len(relatorio)} registros")
+    
+    return {
+        "filial_id": user["filial_id"],
+        "periodo": f"{data_inicio.isoformat()} a {data_fim.isoformat()}",
+        "total_movimentacoes": len(relatorio),
+        "movimentacoes": relatorio
+    }
+
+@router.get("/top-vendas")
+async def top_vendas(
+    limite: int = Query(10, ge=1, le=50),
+    mes: int = Query(None, ge=1, le=12),
+    ano: int = Query(None),
+    db: Session = Depends(get_db),
+    user = Depends(get_current_user)
+):
+    """Get top selling books report"""
+    relatorio = relatorio_top_vendas(db, user["filial_id"], limite, mes, ano)
+    logger.info(f"Relatório de top vendas gerado: {len(relatorio)} itens")
+    
+    return {
+        "filial_id": user["filial_id"],
+        "periodo": f"Mês: {mes}, Ano: {ano}" if mes or ano else "Todos os períodos",
+        "total_itens": len(relatorio),
+        "top_vendas": relatorio
+    }
+
+@router.get("/alertas-minimo")
+async def alertas_minimo(
+    db: Session = Depends(get_db),
+    user = Depends(get_current_user)
+):
+    """Get minimum stock alerts"""
+    relatorio = relatorio_alertas_minimo(db, user["filial_id"])
+    logger.info(f"Relatório de alertas de mínimo gerado: {len(relatorio)} itens")
+    
+    return {
+        "filial_id": user["filial_id"],
+        "data_geracao": date.today().isoformat(),
+        "total_alertas": len(relatorio),
+        "alertas": relatorio
+    }
+
+@router.get("/lotes-vencimento")
+async def lotes_vencimento(
+    dias_proximos: int = Query(30, ge=1, le=365),
+    db: Session = Depends(get_db),
+    user = Depends(get_current_user)
+):
+    """Get expiring batches report"""
+    relatorio = relatorio_lotes_vencimento(db, user["filial_id"], dias_proximos)
+    logger.info(f"Relatório de lotes com vencimento gerado: {len(relatorio)} itens")
+    
+    return {
+        "filial_id": user["filial_id"],
+        "dias_proximos": dias_proximos,
+        "data_geracao": date.today().isoformat(),
+        "total_lotes": len(relatorio),
+        "lotes": relatorio
+    }
