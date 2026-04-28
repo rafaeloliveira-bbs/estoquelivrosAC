@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { authAPI } from '../api/endpoints';
 import useAuthStore from '../store/authStore';
+import logo from '../logodef.jpeg';
 import './Login.css';
 
 export default function Login() {
@@ -36,7 +37,11 @@ export default function Login() {
   return (
     <div className="login-container">
       <div className="login-box">
+        <div className="login-logo-wrap">
+          <img src={logo} alt="Logo Estoque Livros AC" className="login-logo" />
+        </div>
         <h1>Estoque Livros AC</h1>
+        <p className="login-subtitle">Sistema de Gestão</p>
         <form onSubmit={handleSubmit}>
           <div className="form-group">
             <label htmlFor="email">Email</label>

@@ -28,6 +28,7 @@ export const movimentacoesAPI = {
 
 export const relatoriosAPI = {
   estoqueAtual: () => apiClient.get('/relatorios/estoque-atual'),
+  alertasMinimo: () => apiClient.get('/relatorios/alertas-minimo'),
   movimentacoes: (data_inicio, data_fim) =>
     apiClient.get('/relatorios/movimentacoes', { params: { data_inicio, data_fim } }),
   topVendas: (limite = 10, mes, ano) =>

@@ -54,17 +54,18 @@ export default function Movimentacoes() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!livroSelecionado) { setError('Selecione um livro'); return; }
+    const livroId = livroSelecionado?.id || parseInt(buscaLivro) || null;
+    if (!livroId) { setError('Selecione um livro'); return; }
     setLoading(true);
     setMessage('');
     setError('');
     try {
       if (tipo === 'venda') {
-        await movimentacoesAPI.registrarVenda(livroSelecionado.id, parseInt(quantidade), '', '');
+        await movimentacoesAPI.registrarVenda(livroId, parseInt(quantidade), '', '');
         setMessage('Venda registrada com sucesso!');
       } else {
         await movimentacoesAPI.registrarCompra(
-          livroSelecionado.id, parseInt(quantidade),
+          livroId, parseInt(quantidade),
           parseFloat(precoUnitario), numeroLote, fornecedor
         );
         setMessage('Compra registrada com sucesso!');
@@ -119,8 +120,9 @@ export default function Movimentacoes() {
 
           <form onSubmit={handleSubmit} className="form">
             <div className="form-group" style={{ position: 'relative' }}>
-              <label>Livro</label>
+              <label htmlFor="busca-livro">ID do Livro</label>
               <input
+                id="busca-livro"
                 type="text"
                 value={buscaLivro}
                 onChange={(e) => { setBuscaLivro(e.target.value); setLivroSelecionado(null); }}
@@ -142,23 +144,23 @@ export default function Movimentacoes() {
             </div>
 
             <div className="form-group">
-              <label>Quantidade</label>
-              <input type="number" value={quantidade} onChange={(e) => setQuantidade(e.target.value)} min="1" required />
+              <label htmlFor="quantidade">Quantidade</label>
+              <input id="quantidade" type="number" value={quantidade} onChange={(e) => setQuantidade(e.target.value)} min="1" required />
             </div>
 
             {tipo === 'compra' && (
               <>
                 <div className="form-group">
-                  <label>Preço Unitário</label>
-                  <input type="number" step="0.01" value={precoUnitario} onChange={(e) => setPrecoUnitario(e.target.value)} required />
+                  <label htmlFor="preco-unitario">Preço Unitário</label>
+                  <input id="preco-unitario" type="number" step="0.01" value={precoUnitario} onChange={(e) => setPrecoUnitario(e.target.value)} required />
                 </div>
                 <div className="form-group">
-                  <label>Número do Lote</label>
-                  <input type="text" value={numeroLote} onChange={(e) => setNumeroLote(e.target.value)} required />
+                  <label htmlFor="numero-lote">Número do Lote</label>
+                  <input id="numero-lote" type="text" value={numeroLote} onChange={(e) => setNumeroLote(e.target.value)} required />
                 </div>
                 <div className="form-group">
-                  <label>Fornecedor</label>
-                  <input type="text" value={fornecedor} onChange={(e) => setFornecedor(e.target.value)} />
+                  <label htmlFor="fornecedor">Fornecedor</label>
+                  <input id="fornecedor" type="text" value={fornecedor} onChange={(e) => setFornecedor(e.target.value)} />
                 </div>
               </>
             )}

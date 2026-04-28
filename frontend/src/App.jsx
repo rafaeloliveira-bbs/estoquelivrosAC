@@ -4,6 +4,7 @@ import Dashboard from './pages/Dashboard';
 import Movimentacoes from './pages/Movimentacoes';
 import Livros from './pages/Livros';
 import Relatorios from './pages/Relatorios';
+import logo from './logodef.jpeg';
 import './App.css';
 
 function PrivateRoute({ children }) {
@@ -38,7 +39,10 @@ function Navigation() {
 
   return (
     <nav className="navbar">
-      <div className="nav-brand">Estoque Livros AC</div>
+      <div className="nav-brand" onClick={() => navigate('/')} style={{ cursor: 'pointer' }}>
+        <img src={logo} alt="Logo" className="nav-logo" />
+        <span className="nav-brand-name">Estoque Livros AC</span>
+      </div>
       <ul className="nav-menu">
         {navLink('/', 'Dashboard')}
         {navLink('/livros', 'Livros')}
