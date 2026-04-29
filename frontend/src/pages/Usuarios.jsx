@@ -17,7 +17,7 @@ export default function Usuarios() {
   const [erro, setErro] = useState('');
   const [sucesso, setSucesso] = useState('');
 
-  const { data: usuarios = [], isLoading } = useQuery({
+  const { data: usuarios = [], isLoading, isError, error } = useQuery({
     queryKey: ['usuarios'],
     queryFn: () => usuariosAPI.listar().then((r) => r.data),
     staleTime: 30_000,
@@ -117,6 +117,11 @@ export default function Usuarios() {
 
       {sucesso && <div className="alert-success">{sucesso}</div>}
       {erro && !modal && <div className="alert-error">{erro}</div>}
+      {isError && (
+        <div className="alert-error">
+          Erro ao carregar usuários: {error?.response?.data?.detail || error?.message || 'Erro desconhecido'}
+        </div>
+      )}
 
       {isLoading ? (
         <div className="loading">Carregando...</div>

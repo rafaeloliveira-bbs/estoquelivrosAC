@@ -22,8 +22,8 @@ class UsuarioAtualizar(BaseModel):
 class UsuarioResposta(UsuarioBase):
     id: int
     ativo: bool
-    ultimo_acesso: Optional[datetime]
-    criado_em: datetime
+    ultimo_acesso: Optional[datetime] = None
+    criado_em: Optional[datetime] = None
     
     class Config:
         from_attributes = True
