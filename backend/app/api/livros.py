@@ -163,41 +163,66 @@ async def importar_csv(
     erros = []
 
     # Log dos cabeçalhos encontrados
-    fieldnames = reader.fieldnames
+    fieldnames = reader.fieldnames or []
     logger.info(f"Importação CSV - Cabeçalhos encontrados: {fieldnames}")
+
+    # Mapear colunas dinamicamente (igual ao preview)
+    col_map = {
+        "codigo_item": None, "titulo": None, "fornecedor": None, "editora": None,
+        "classificacao": None, "tipo_material": None, "grade": None,
+        "isbn": None, "descontinuado": None,
+    }
+    for col in fieldnames:
+        col_lower = col.lower().strip()
+        if col_lower in ["item", "código item", "codigo item", "codigo_item", "código"]:
+            col_map["codigo_item"] = col
+        elif col_lower in ["títulos", "titulo", "título"]:
+            col_map["titulo"] = col
+        elif col_lower in ["fornecedor"]:
+            col_map["fornecedor"] = col
+        elif col_lower in ["editora"]:
+            col_map["editora"] = col
+        elif col_lower in ["classificação", "classificacao"]:
+            col_map["classificacao"] = col
+        elif col_lower in ["tipo do material", "tipo_material", "tipo"]:
+            col_map["tipo_material"] = col
+        elif col_lower in ["grade"]:
+            col_map["grade"] = col
+        elif col_lower in ["isbn 13", "isbn", "isbn13"]:
+            col_map["isbn"] = col
+        elif col_lower in ["descontinuado?", "descontinuado"]:
+            col_map["descontinuado"] = col
+
+    def _get(row, field):
+        col = col_map.get(field)
+        return row.get(col, "").strip() if col else ""
 
     for i, row in enumerate(reader, start=2):
         try:
-            titulo = row.get("Títulos", "").strip()
+            titulo = _get(row, "titulo")
             if not titulo:
                 erros.append(f"Linha {i}: campo 'Títulos' obrigatório")
                 continue
 
-            # Tentar múltiplas possibilidades para o código do item
-            _codigo_raw = (
-                row.get("Item", "").strip() or
-                row.get("Código Item", "").strip() or
-                row.get("codigo_item", "").strip() or
-                row.get("Código", "").strip()
-            )
+            _codigo_raw = _get(row, "codigo_item")
             logger.debug(f"Linha {i}: Tentando extrair código do item de: '{_codigo_raw}'")
             try:
                 codigo_item = int(_codigo_raw) if _codigo_raw else None
             except ValueError:
                 erros.append(f"Linha {i}: 'Item' deve ser numérico (recebido: '{_codigo_raw}')")
                 continue
-            isbn_13 = row.get("ISBN 13", "").strip() or None
-            desc_str = row.get("Descontinuado?", "").strip().lower()
+            isbn_13 = _get(row, "isbn") or None
+            desc_str = _get(row, "descontinuado").lower()
             descontinuado = desc_str in ("sim", "yes", "true", "1", "s")
 
             dados = {
                 "codigo_item": codigo_item,
                 "titulo": titulo,
-                "fornecedor": row.get("Fornecedor", "").strip() or None,
-                "editora": row.get("Editora", "").strip() or None,
-                "classificacao": row.get("Classificação", "").strip() or None,
-                "tipo_material": row.get("Tipo do material", "").strip() or None,
-                "grade": row.get("Grade", "").strip() or None,
+                "fornecedor": _get(row, "fornecedor") or None,
+                "editora": _get(row, "editora") or None,
+                "classificacao": _get(row, "classificacao") or None,
+                "tipo_material": _get(row, "tipo_material") or None,
+                "grade": _get(row, "grade") or None,
                 "isbn": isbn_13,
                 "descontinuado": descontinuado,
                 "filial_id": user["filial_id"],
