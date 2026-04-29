@@ -1,4 +1,4 @@
-Código Item,Títulos,Fornecedor,Editora,ISBN 13,Descontinuado?
-1,Livro Teste 1,Fornecedor A,Editora X,9781234567890,Não
-2,Livro Teste 2,Fornecedor B,Editora Y,9780987654321,Sim
-3,Livro Teste 3,Fornecedor C,Editora Z,9781122334455,Não
+Item,Títulos,Fornecedor,Editora,Classificação,Tipo do material,Grade,ISBN 13,Descontinuado?,Quantidade,Preço Unitário,Filial
+1,Livro Teste 1,Fornecedor A,Editora X,Literatura,Livro,5o Ano,9781234567890,Não,50,25.90,
+2,Livro Teste 2,Fornecedor B,Editora Y,Ciências,Livro,6o Ano,9780987654321,Sim,0,,Filial Centro
+3,Livro Teste 3,Fornecedor C,Editora Z,Matemática,Livro,7o Ano,9781122334455,Não,30,15.00,1

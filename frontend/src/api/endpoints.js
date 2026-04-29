@@ -34,16 +34,6 @@ export const movimentacoesAPI = {
       params: { livro_id, quantidade, preco_unitario, numero_lote, fornecedor },
     }),
   obterEstoque: (livro_id) => apiClient.get(`/movimentacoes/estoque/${livro_id}`),
-  templateEstoqueCSV: () =>
-    apiClient.get('/movimentacoes/template-estoque-csv', { responseType: 'blob' }),
-  previewEstoqueCSV: (formData) =>
-    apiClient.post('/movimentacoes/preview-estoque-csv', formData, {
-      headers: { 'Content-Type': 'multipart/form-data' },
-    }),
-  importarEstoqueCSV: (formData) =>
-    apiClient.post('/movimentacoes/importar-estoque-csv', formData, {
-      headers: { 'Content-Type': 'multipart/form-data' },
-    }),
 };
 
 export const relatoriosAPI = {

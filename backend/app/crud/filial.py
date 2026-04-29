@@ -14,6 +14,10 @@ def obter_filial_por_id(db: Session, filial_id: int):
     """Get branch by ID"""
     return db.query(Filial).filter(Filial.id == filial_id).first()
 
+def obter_filial_por_nome(db: Session, nome: str):
+    """Get branch by name (case-insensitive)"""
+    return db.query(Filial).filter(Filial.nome.ilike(nome.strip())).first()
+
 def listar_filiais(db: Session, skip: int = 0, limit: int = 100):
     """List branches"""
     return db.query(Filial).offset(skip).limit(limit).all()

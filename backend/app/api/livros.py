@@ -1,5 +1,7 @@
 import csv
 import io
+from decimal import Decimal
+from datetime import date
 from fastapi import APIRouter, Depends, HTTPException, status, Query, UploadFile, File
 from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
@@ -12,6 +14,8 @@ from app.crud.livro import (
     obter_livro_por_codigo, obter_livro_por_isbn,
     listar_livros_com_estoque,
 )
+from app.services.estoque import registrar_compra
+from app.crud.filial import obter_filial_por_id, obter_filial_por_nome
 from app.auth.permissions import get_current_user, requer_role
 from app.config import logger
 
@@ -20,12 +24,13 @@ router = APIRouter(prefix="/livros", tags=["livros"])
 _COLUNAS_CSV = [
     "Item", "Títulos", "Fornecedor", "Editora",
     "Classificação", "Tipo do material", "Grade", "ISBN 13", "Descontinuado?",
+    "Quantidade", "Preço Unitário", "Filial",
 ]
 
 
 @router.get("/template-csv")
 async def baixar_template_csv(user=Depends(get_current_user)):
-    """Retorna um arquivo CSV modelo para importação de livros."""
+    """Retorna um arquivo CSV modelo para importação de livros e estoque."""
     output = io.StringIO()
     writer = csv.DictWriter(output, fieldnames=_COLUNAS_CSV)
     writer.writeheader()
@@ -39,6 +44,9 @@ async def baixar_template_csv(user=Depends(get_current_user)):
         "Grade": "5o Ano",
         "ISBN 13": "9788500000000",
         "Descontinuado?": "Não",
+        "Quantidade": "50",
+        "Preço Unitário": "25.90",
+        "Filial": "",
     })
     output.seek(0)
     return StreamingResponse(
@@ -84,8 +92,11 @@ async def preview_csv(
         "grade": None,
         "isbn": None,
         "descontinuado": None,
+        "quantidade": None,
+        "preco_unitario": None,
+        "filial": None,
     }
-    
+
     # Tentar mapear colunas automaticamente
     for col in fieldnames:
         col_lower = col.lower().strip()
@@ -107,12 +118,31 @@ async def preview_csv(
             column_mapping["isbn"] = col
         elif col_lower in ["descontinuado?", "descontinuado"]:
             column_mapping["descontinuado"] = col
-    
+        elif col_lower in ["quantidade", "qtd", "qty"]:
+            column_mapping["quantidade"] = col
+        elif col_lower in ["preço unitário", "preco_unitario", "preco unitario", "preço", "preco"]:
+            column_mapping["preco_unitario"] = col
+        elif col_lower in ["filial", "filial_id", "id da filial"]:
+            column_mapping["filial"] = col
+
     # Validar mapeamento
     warnings = []
     if not column_mapping["titulo"]:
         warnings.append("Coluna obrigatória 'Títulos' não encontrada")
-    
+
+    def _resolver_filial_preview(value: str):
+        """Resolve filial value for preview (returns display string)."""
+        if not value:
+            return "(padrão: filial do usuário)"
+        try:
+            fid = int(value)
+            filial = obter_filial_por_id(db, fid)
+        except ValueError:
+            filial = obter_filial_por_nome(db, value)
+        if filial:
+            return f"{filial.nome} (ID: {filial.id})"
+        return f"Erro: '{value}' não encontrada"
+
     # Preparar preview dos dados mapeados
     mapped_preview = []
     for row in preview_rows:
@@ -128,10 +158,25 @@ async def preview_csv(
                 elif field == "descontinuado":
                     val_lower = value.lower().strip()
                     mapped_row[field] = val_lower in ("sim", "yes", "true", "1", "s")
+                elif field == "quantidade":
+                    try:
+                        mapped_row[field] = int(value) if value else None
+                    except ValueError:
+                        mapped_row[field] = f"Erro: '{value}' não é numérico"
+                elif field == "preco_unitario":
+                    try:
+                        mapped_row[field] = float(value.replace(",", ".")) if value else None
+                    except ValueError:
+                        mapped_row[field] = f"Erro: '{value}' não é numérico"
+                elif field == "filial":
+                    mapped_row[field] = _resolver_filial_preview(value.strip())
                 else:
                     mapped_row[field] = value
             else:
-                mapped_row[field] = None
+                if field == "filial":
+                    mapped_row[field] = "(padrão: filial do usuário)"
+                else:
+                    mapped_row[field] = None
         mapped_preview.append(mapped_row)
 
     return {
@@ -171,7 +216,8 @@ async def importar_csv(
     col_map = {
         "codigo_item": None, "titulo": None, "fornecedor": None, "editora": None,
         "classificacao": None, "tipo_material": None, "grade": None,
-        "isbn": None, "descontinuado": None,
+        "isbn": None, "descontinuado": None, "quantidade": None, "preco_unitario": None,
+        "filial": None,
     }
     for col in fieldnames:
         col_lower = col.lower().strip()
@@ -193,10 +239,32 @@ async def importar_csv(
             col_map["isbn"] = col
         elif col_lower in ["descontinuado?", "descontinuado"]:
             col_map["descontinuado"] = col
+        elif col_lower in ["quantidade", "qtd", "qty"]:
+            col_map["quantidade"] = col
+        elif col_lower in ["preço unitário", "preco_unitario", "preco unitario", "preço", "preco"]:
+            col_map["preco_unitario"] = col
+        elif col_lower in ["filial", "filial_id", "id da filial"]:
+            col_map["filial"] = col
 
     def _get(row, field):
         col = col_map.get(field)
         return row.get(col, "").strip() if col else ""
+
+    def _resolver_filial(value: str, linha: int):
+        """Resolve filial by ID or name. Returns (filial_id, erro_str)."""
+        if not value:
+            return user["filial_id"], None
+        try:
+            fid = int(value)
+            filial = obter_filial_por_id(db, fid)
+        except ValueError:
+            filial = obter_filial_por_nome(db, value)
+        if not filial:
+            return None, f"Linha {linha}: filial '{value}' não encontrada"
+        return filial.id, None
+
+    numero_lote_base = f"IMP-{date.today().strftime('%Y%m%d')}"
+    estoque_importado = 0
 
     for i, row in enumerate(reader, start=2):
         try:
@@ -212,6 +280,12 @@ async def importar_csv(
             except ValueError:
                 erros.append(f"Linha {i}: 'Item' deve ser numérico (recebido: '{_codigo_raw}')")
                 continue
+
+            filial_id, erro_filial = _resolver_filial(_get(row, "filial"), i)
+            if erro_filial:
+                erros.append(erro_filial)
+                continue
+
             isbn_13 = _get(row, "isbn") or None
             desc_str = _get(row, "descontinuado").lower()
             descontinuado = desc_str in ("sim", "yes", "true", "1", "s")
@@ -226,12 +300,12 @@ async def importar_csv(
                 "grade": _get(row, "grade") or None,
                 "isbn": isbn_13,
                 "descontinuado": descontinuado,
-                "filial_id": user["filial_id"],
+                "filial_id": filial_id,
             }
 
             existente = None
             if codigo_item:
-                existente = obter_livro_por_codigo(db, codigo_item, user["filial_id"])
+                existente = obter_livro_por_codigo(db, codigo_item, filial_id)
             if not existente and isbn_13:
                 existente = obter_livro_por_isbn(db, isbn_13)
 
@@ -240,18 +314,45 @@ async def importar_csv(
                     setattr(existente, k, v)
                 db.commit()
                 atualizados += 1
+                livro_id = existente.id
             else:
                 livro = Livro(**dados)
                 db.add(livro)
                 db.commit()
+                db.refresh(livro)
                 criados += 1
+                livro_id = livro.id
+
+            # Registrar estoque se quantidade informada
+            qtd_raw = _get(row, "quantidade")
+            if qtd_raw:
+                try:
+                    qtd = int(qtd_raw)
+                    if qtd <= 0:
+                        raise ValueError("quantidade deve ser > 0")
+                    preco_raw = _get(row, "preco_unitario")
+                    preco = Decimal(preco_raw.replace(",", ".")) if preco_raw else Decimal("0.00")
+                    numero_lote = f"{numero_lote_base}-{codigo_item or livro_id}-{i}"
+                    registrar_compra(
+                        db,
+                        livro_id=livro_id,
+                        quantidade=qtd,
+                        preco_unitario=preco,
+                        usuario_id=user["user_id"],
+                        filial_id=filial_id,
+                        numero_lote=numero_lote,
+                        fornecedor=_get(row, "fornecedor") or "Importação CSV",
+                    )
+                    estoque_importado += 1
+                except Exception as e:
+                    erros.append(f"Linha {i}: erro ao registrar estoque — {str(e)}")
 
         except Exception as e:
             db.rollback()
             erros.append(f"Linha {i}: {str(e)}")
 
-    logger.info(f"Importação CSV: {criados} criados, {atualizados} atualizados, {len(erros)} erros")
-    return {"criados": criados, "atualizados": atualizados, "erros": erros}
+    logger.info(f"Importação CSV: {criados} criados, {atualizados} atualizados, {estoque_importado} estoques, {len(erros)} erros")
+    return {"criados": criados, "atualizados": atualizados, "estoque_importado": estoque_importado, "erros": erros}
 
 
 @router.delete("/limpar-todos")
