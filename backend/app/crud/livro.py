@@ -1,6 +1,7 @@
 from sqlalchemy.orm import Session
-from sqlalchemy import cast, String
+from sqlalchemy import cast, String, func
 from app.models.livro import Livro
+from app.models.lote import Lote
 from app.schemas.livro import LivroCriar, LivroAtualizar
 
 def criar_livro(db: Session, livro: LivroCriar):
@@ -43,6 +44,61 @@ def pesquisar_livros(db: Session, filial_id: int, termo: str, skip: int = 0, lim
         Livro.editora.ilike(t)
     )
     return query.offset(skip).limit(limit).all()
+
+def listar_livros_com_estoque(
+    db: Session, filial_id: int, termo: str = None, skip: int = 0, limit: int = 100
+) -> list[dict]:
+    estoque_sub = (
+        db.query(
+            Lote.livro_id,
+            func.coalesce(func.sum(Lote.quantidade_disponivel), 0).label("estoque_total"),
+        )
+        .filter(Lote.filial_id == filial_id)
+        .group_by(Lote.livro_id)
+        .subquery()
+    )
+
+    query = (
+        db.query(Livro, func.coalesce(estoque_sub.c.estoque_total, 0).label("estoque_total"))
+        .outerjoin(estoque_sub, estoque_sub.c.livro_id == Livro.id)
+        .filter(Livro.filial_id == filial_id, Livro.status == "ativo")
+    )
+
+    if termo:
+        t = f"%{termo.lower()}%"
+        query = query.filter(
+            Livro.titulo.ilike(t)
+            | Livro.autor.ilike(t)
+            | Livro.isbn.ilike(t)
+            | cast(Livro.codigo_item, String).ilike(t)
+            | Livro.fornecedor.ilike(t)
+            | Livro.editora.ilike(t)
+        )
+
+    rows = query.offset(skip).limit(limit).all()
+    return [
+        {
+            "id": l.id,
+            "codigo_item": l.codigo_item,
+            "titulo": l.titulo,
+            "autor": l.autor,
+            "isbn": l.isbn,
+            "fornecedor": l.fornecedor,
+            "editora": l.editora,
+            "classificacao": l.classificacao,
+            "tipo_material": l.tipo_material,
+            "grade": l.grade,
+            "descontinuado": l.descontinuado,
+            "filial_id": l.filial_id,
+            "categoria_id": l.categoria_id,
+            "preco_custo": float(l.preco_custo or 0),
+            "estoque_minimo": l.estoque_minimo,
+            "status": l.status,
+            "estoque_total": int(estoque_total),
+        }
+        for l, estoque_total in rows
+    ]
+
 
 def atualizar_livro(db: Session, livro_id: int, livro_data: LivroAtualizar):
     db_livro = obter_livro_por_id(db, livro_id)

@@ -1,5 +1,6 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
-import { livrosAPI, categoriasAPI, movimentacoesAPI } from '../api/endpoints';
+import { useState, useEffect, useRef } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { livrosAPI, categoriasAPI } from '../api/endpoints';
 import './Livros.css';
 
 const FORM_VAZIO = {
@@ -9,14 +10,12 @@ const FORM_VAZIO = {
 };
 
 export default function Livros() {
-  const [livros, setLivros] = useState([]);
-  const [categorias, setCategorias] = useState([]);
+  const queryClient = useQueryClient();
   const [busca, setBusca] = useState('');
-  const [loading, setLoading] = useState(true);
+  const [buscaDebounced, setBuscaDebounced] = useState('');
   const [modal, setModal] = useState(null);
   const [livroAtual, setLivroAtual] = useState(null);
   const [form, setForm] = useState(FORM_VAZIO);
-  const [estoques, setEstoques] = useState({});
   const [erro, setErro] = useState('');
   const [sucesso, setSucesso] = useState('');
   const [importando, setImportando] = useState(false);
@@ -25,36 +24,26 @@ export default function Livros() {
   const [selectedFile, setSelectedFile] = useState(null);
   const fileInputRef = useRef(null);
 
-  const carregarLivros = useCallback(async () => {
-    setLoading(true);
-    try {
-      const res = busca.trim()
-        ? await livrosAPI.buscar(busca.trim())
-        : await livrosAPI.listar();
-      setLivros(res.data);
-      const estoqueMap = {};
-      await Promise.all(
-        res.data.map(async (l) => {
-          try {
-            const e = await movimentacoesAPI.obterEstoque(l.id);
-            estoqueMap[l.id] = e.data.estoque_total;
-          } catch {
-            estoqueMap[l.id] = '-';
-          }
-        })
-      );
-      setEstoques(estoqueMap);
-    } catch {
-      setErro('Erro ao carregar livros');
-    } finally {
-      setLoading(false);
-    }
+  useEffect(() => {
+    const t = setTimeout(() => setBuscaDebounced(busca), 300);
+    return () => clearTimeout(t);
   }, [busca]);
 
-  useEffect(() => {
-    carregarLivros();
-    categoriasAPI.listar().then((r) => setCategorias(r.data)).catch(() => {});
-  }, [carregarLivros]);
+  const { data: livros = [], isLoading: loading } = useQuery({
+    queryKey: ['livros', buscaDebounced],
+    queryFn: () =>
+      livrosAPI.listarComEstoque(buscaDebounced.trim() || null).then((r) => r.data),
+    staleTime: 30_000,
+  });
+
+  const { data: categorias = [] } = useQuery({
+    queryKey: ['categorias'],
+    queryFn: () => categoriasAPI.listar().then((r) => r.data),
+    staleTime: 5 * 60_000,
+  });
+
+  const invalidarLivros = () =>
+    queryClient.invalidateQueries({ queryKey: ['livros'] });
 
   const abrirCriar = () => {
     setForm(FORM_VAZIO);
@@ -122,7 +111,7 @@ export default function Livros() {
         setSucesso('Livro atualizado com sucesso!');
       }
       fecharModal();
-      carregarLivros();
+      invalidarLivros();
       setTimeout(() => setSucesso(''), 3000);
     } catch (err) {
       setErro(err.response?.data?.detail || 'Erro ao salvar livro');
@@ -134,7 +123,7 @@ export default function Livros() {
     try {
       await livrosAPI.deletar(livro.id);
       setSucesso('Livro desativado.');
-      carregarLivros();
+      invalidarLivros();
       setTimeout(() => setSucesso(''), 3000);
     } catch (err) {
       setErro(err.response?.data?.detail || 'Erro ao desativar livro');
@@ -147,7 +136,7 @@ export default function Livros() {
     try {
       const res = await livrosAPI.limparTodos();
       setSucesso(`${res.data.removidos} livro(s) removido(s).`);
-      carregarLivros();
+      invalidarLivros();
       setTimeout(() => setSucesso(''), 4000);
     } catch (err) {
       setErro(err.response?.data?.detail || 'Erro ao limpar livros');
@@ -171,11 +160,9 @@ export default function Livros() {
   const handleFileSelect = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    
     setSelectedFile(file);
     setErro('');
     setPreview(null);
-    
     try {
       const formData = new FormData();
       formData.append('file', file);
@@ -189,7 +176,6 @@ export default function Livros() {
 
   const handleConfirmarImportacao = async () => {
     if (!selectedFile) return;
-    
     setImportando(true);
     setResultadoImport(null);
     setErro('');
@@ -200,7 +186,7 @@ export default function Livros() {
       setResultadoImport(res.data);
       setPreview(null);
       setSelectedFile(null);
-      carregarLivros();
+      invalidarLivros();
     } catch (err) {
       setErro(err.response?.data?.detail || 'Erro ao importar planilha');
     } finally {
@@ -258,7 +244,7 @@ export default function Livros() {
       {preview && (
         <div className="preview-section">
           <h2>Pré-visualização da Importação</h2>
-          
+
           {preview.warnings.length > 0 && (
             <div className="warnings">
               <h3>⚠️ Avisos:</h3>
@@ -306,17 +292,14 @@ export default function Livros() {
           </div>
 
           <div className="preview-actions">
-            <button 
-              className="btn-primary" 
+            <button
+              className="btn-primary"
               onClick={handleConfirmarImportacao}
               disabled={importando}
             >
               {importando ? 'Importando...' : 'Confirmar Importação'}
             </button>
-            <button 
-              className="btn-secondary" 
-              onClick={handleCancelarPreview}
-            >
+            <button className="btn-secondary" onClick={handleCancelarPreview}>
               Cancelar
             </button>
           </div>
@@ -373,7 +356,7 @@ export default function Livros() {
                         {l.descontinuado ? 'Sim' : 'Não'}
                       </span>
                     </td>
-                    <td>{estoques[l.id] ?? '...'}</td>
+                    <td>{l.estoque_total}</td>
                     <td>
                       <span className={`badge ${l.status === 'ativo' ? 'badge-green' : 'badge-gray'}`}>
                         {l.status}

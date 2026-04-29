@@ -1,6 +1,5 @@
 from sqlalchemy import create_engine
 from sqlalchemy.orm import declarative_base, sessionmaker
-from sqlalchemy.pool import NullPool
 from app.config import settings
 
 _is_sqlite = "sqlite" in settings.DATABASE_URL
@@ -9,14 +8,21 @@ _db_url = settings.DATABASE_URL
 if not _is_sqlite and _db_url.startswith("postgresql://"):
     _db_url = _db_url.replace("postgresql://", "postgresql+psycopg://", 1)
 
-_connect_args = {} if _is_sqlite else {"sslmode": "require", "prepare_threshold": None}
-
-engine = create_engine(
-    _db_url,
-    echo=settings.DEBUG,
-    poolclass=NullPool,
-    connect_args=_connect_args,
-)
+if _is_sqlite:
+    engine = create_engine(
+        _db_url,
+        echo=settings.DEBUG,
+        connect_args={"check_same_thread": False},
+    )
+else:
+    engine = create_engine(
+        _db_url,
+        echo=settings.DEBUG,
+        pool_size=5,
+        max_overflow=10,
+        pool_pre_ping=True,
+        connect_args={"sslmode": "require", "prepare_threshold": None},
+    )
 
 # Session factory
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)

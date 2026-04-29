@@ -10,6 +10,7 @@ from app.crud.livro import (
     criar_livro, obter_livro_por_id, listar_livros,
     atualizar_livro, deletar_livro, pesquisar_livros,
     obter_livro_por_codigo, obter_livro_por_isbn,
+    listar_livros_com_estoque,
 )
 from app.auth.permissions import get_current_user, requer_role
 from app.config import logger
@@ -297,6 +298,17 @@ async def buscar(
     livros = pesquisar_livros(db, user["filial_id"], termo, skip, limit)
     logger.info(f"Busca: '{termo}' — {len(livros)} resultados")
     return livros
+
+
+@router.get("/com-estoque")
+async def listar_com_estoque(
+    termo: str = Query(None),
+    skip: int = Query(0, ge=0),
+    limit: int = Query(100, ge=1, le=1000),
+    db: Session = Depends(get_db),
+    user=Depends(get_current_user),
+):
+    return listar_livros_com_estoque(db, filial_id=user["filial_id"], termo=termo or None, skip=skip, limit=limit)
 
 
 @router.get("/{livro_id}", response_model=LivroResposta)

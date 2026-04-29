@@ -1,37 +1,24 @@
-import { useState, useEffect } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { relatoriosAPI } from '../api/endpoints';
 import './Dashboard.css';
 
 export default function Dashboard() {
-  const [estoque, setEstoque] = useState(null);
-  const [alertas, setAlertas] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
+  const { data: estoque, isLoading: loadingEstoque, error: erroEstoque } = useQuery({
+    queryKey: ['relatorio-estoque'],
+    queryFn: () => relatoriosAPI.estoqueAtual().then((r) => r.data),
+    staleTime: 60_000,
+  });
 
-  useEffect(() => {
-    carregarDados();
-  }, []);
+  const { data: alertas, isLoading: loadingAlertas } = useQuery({
+    queryKey: ['relatorio-alertas'],
+    queryFn: () => relatoriosAPI.alertasMinimo().then((r) => r.data),
+    staleTime: 60_000,
+  });
 
-  const carregarDados = async () => {
-    try {
-      setLoading(true);
-      const [estoqueRes, alertasRes] = await Promise.all([
-        relatoriosAPI.estoqueAtual(),
-        relatoriosAPI.alertasMinimo(),
-      ]);
-
-      setEstoque(estoqueRes.data);
-      setAlertas(alertasRes.data);
-    } catch (err) {
-      setError('Erro ao carregar dados');
-      console.error(err);
-    } finally {
-      setLoading(false);
-    }
-  };
+  const loading = loadingEstoque || loadingAlertas;
 
   if (loading) return <div className="loading">Carregando...</div>;
-  if (error) return <div className="error">{error}</div>;
+  if (erroEstoque) return <div className="error">Erro ao carregar dados</div>;
 
   return (
     <div className="dashboard">
