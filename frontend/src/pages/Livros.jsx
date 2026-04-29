@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { livrosAPI, categoriasAPI } from '../api/endpoints';
 import { getUserRole } from '../utils/auth';
@@ -25,11 +25,24 @@ export default function Livros() {
   const [preview, setPreview] = useState(null);
   const [selectedFile, setSelectedFile] = useState(null);
   const fileInputRef = useRef(null);
+  const [csvMenuAberto, setCsvMenuAberto] = useState(false);
+  const csvMenuRef = useRef(null);
 
   useEffect(() => {
     const t = setTimeout(() => setBuscaDebounced(busca), 300);
     return () => clearTimeout(t);
   }, [busca]);
+
+  useEffect(() => {
+    if (!csvMenuAberto) return;
+    const fechar = (e) => {
+      if (csvMenuRef.current && !csvMenuRef.current.contains(e.target)) {
+        setCsvMenuAberto(false);
+      }
+    };
+    document.addEventListener('mousedown', fechar);
+    return () => document.removeEventListener('mousedown', fechar);
+  }, [csvMenuAberto]);
 
   const { data: livros = [], isLoading: loading } = useQuery({
     queryKey: ['livros', buscaDebounced],
@@ -209,23 +222,34 @@ export default function Livros() {
         <h1>Livros</h1>
         <div className="header-actions">
           {isAdmin && <button className="btn-danger" onClick={handleLimparTodos}>Limpar todos</button>}
-          {isAdmin && <button className="btn-secondary" onClick={handleBaixarModelo}>Baixar Modelo CSV</button>}
           {isAdmin && (
-            <button
-              className="btn-secondary"
-              onClick={() => fileInputRef.current?.click()}
-              disabled={importando}
-            >
-              {importando ? 'Importando...' : 'Importar CSV'}
-            </button>
+            <div className="csv-dropdown" ref={csvMenuRef}>
+              <button
+                className="btn-secondary"
+                onClick={() => setCsvMenuAberto((v) => !v)}
+                disabled={importando}
+              >
+                {importando ? 'Importando...' : 'CSV ▾'}
+              </button>
+              {csvMenuAberto && (
+                <div className="csv-menu">
+                  <button onClick={() => { handleBaixarModelo(); setCsvMenuAberto(false); }}>
+                    Baixar Modelo
+                  </button>
+                  <button onClick={() => { fileInputRef.current?.click(); setCsvMenuAberto(false); }}>
+                    Importar
+                  </button>
+                </div>
+              )}
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".csv"
+                style={{ display: 'none' }}
+                onChange={handleFileSelect}
+              />
+            </div>
           )}
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept=".csv"
-            style={{ display: 'none' }}
-            onChange={handleFileSelect}
-          />
           <button className="btn-primary" onClick={abrirCriar}>+ Novo Livro</button>
         </div>
       </div>

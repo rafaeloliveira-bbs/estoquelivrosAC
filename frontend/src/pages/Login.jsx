@@ -68,9 +68,7 @@ export default function Login() {
             {loading ? 'Autenticando...' : 'Entrar'}
           </button>
         </form>
-        <p className="test-credentials">
-          <small>Credenciais de teste: admin@estoque.com / admin123</small>
-        </p>
+
       </div>
     </div>
   );
