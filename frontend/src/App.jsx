@@ -4,6 +4,8 @@ import Dashboard from './pages/Dashboard';
 import Movimentacoes from './pages/Movimentacoes';
 import Livros from './pages/Livros';
 import Relatorios from './pages/Relatorios';
+import Usuarios from './pages/Usuarios';
+import { getUserRole } from './utils/auth';
 import logo from './logodef.jpeg';
 import './App.css';
 
@@ -12,12 +14,21 @@ function PrivateRoute({ children }) {
   return token ? children : <Navigate to="/login" />;
 }
 
+function AdminRoute({ children }) {
+  const token = localStorage.getItem('token');
+  if (!token) return <Navigate to="/login" />;
+  if (getUserRole() !== 'admin') return <Navigate to="/" />;
+  return children;
+}
+
 function Navigation() {
   const navigate = useNavigate();
   const location = useLocation();
   const token = localStorage.getItem('token');
 
   if (!token) return null;
+
+  const role = getUserRole();
 
   const handleLogout = () => {
     localStorage.removeItem('token');
@@ -51,6 +62,7 @@ function Navigation() {
         {navLink('/livros', 'Livros')}
         {navLink('/movimentacoes', 'Movimentações')}
         {navLink('/relatorios', 'Relatórios')}
+        {role === 'admin' && navLink('/usuarios', 'Usuários')}
         <li>
           <button onClick={handleLogout} className="logout-btn">Sair</button>
         </li>
@@ -69,6 +81,7 @@ export default function App() {
         <Route path="/livros" element={<PrivateRoute><Livros /></PrivateRoute>} />
         <Route path="/movimentacoes" element={<PrivateRoute><Movimentacoes /></PrivateRoute>} />
         <Route path="/relatorios" element={<PrivateRoute><Relatorios /></PrivateRoute>} />
+        <Route path="/usuarios" element={<AdminRoute><Usuarios /></AdminRoute>} />
       </Routes>
     </Router>
   );

@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { livrosAPI, categoriasAPI } from '../api/endpoints';
+import { livrosAPI, categoriasAPI, movimentacoesAPI } from '../api/endpoints';
+import { getUserRole } from '../utils/auth';
 import './Livros.css';
 
 const FORM_VAZIO = {
@@ -11,6 +12,7 @@ const FORM_VAZIO = {
 
 export default function Livros() {
   const queryClient = useQueryClient();
+  const isAdmin = getUserRole() === 'admin';
   const [busca, setBusca] = useState('');
   const [buscaDebounced, setBuscaDebounced] = useState('');
   const [modal, setModal] = useState(null);
@@ -23,6 +25,13 @@ export default function Livros() {
   const [preview, setPreview] = useState(null);
   const [selectedFile, setSelectedFile] = useState(null);
   const fileInputRef = useRef(null);
+
+  // estoque CSV
+  const [importandoEstoque, setImportandoEstoque] = useState(false);
+  const [resultadoEstoqueImport, setResultadoEstoqueImport] = useState(null);
+  const [previewEstoque, setPreviewEstoque] = useState(null);
+  const [selectedEstoqueFile, setSelectedEstoqueFile] = useState(null);
+  const estoqueFileInputRef = useRef(null);
 
   useEffect(() => {
     const t = setTimeout(() => setBuscaDebounced(busca), 300);
@@ -200,26 +209,102 @@ export default function Livros() {
     fileInputRef.current.value = '';
   };
 
+  const handleBaixarModeloEstoque = async () => {
+    try {
+      const res = await movimentacoesAPI.templateEstoqueCSV();
+      const url = URL.createObjectURL(new Blob([res.data], { type: 'text/csv' }));
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'modelo_estoque.csv';
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch {
+      setErro('Erro ao baixar modelo de estoque');
+    }
+  };
+
+  const handleEstoqueFileSelect = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setSelectedEstoqueFile(file);
+    setErro('');
+    setPreviewEstoque(null);
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      const res = await movimentacoesAPI.previewEstoqueCSV(formData);
+      setPreviewEstoque(res.data);
+    } catch (err) {
+      setErro(err.response?.data?.detail || 'Erro ao analisar arquivo de estoque');
+      e.target.value = '';
+    }
+  };
+
+  const handleConfirmarImportacaoEstoque = async () => {
+    if (!selectedEstoqueFile) return;
+    setImportandoEstoque(true);
+    setResultadoEstoqueImport(null);
+    setErro('');
+    try {
+      const formData = new FormData();
+      formData.append('file', selectedEstoqueFile);
+      const res = await movimentacoesAPI.importarEstoqueCSV(formData);
+      setResultadoEstoqueImport(res.data);
+      setPreviewEstoque(null);
+      setSelectedEstoqueFile(null);
+      invalidarLivros();
+    } catch (err) {
+      setErro(err.response?.data?.detail || 'Erro ao importar estoque');
+    } finally {
+      setImportandoEstoque(false);
+    }
+  };
+
+  const handleCancelarPreviewEstoque = () => {
+    setPreviewEstoque(null);
+    setSelectedEstoqueFile(null);
+    estoqueFileInputRef.current.value = '';
+  };
+
   return (
     <div className="livros-page">
       <div className="page-header">
         <h1>Livros</h1>
         <div className="header-actions">
-          <button className="btn-danger" onClick={handleLimparTodos}>Limpar todos</button>
-          <button className="btn-secondary" onClick={handleBaixarModelo}>Baixar Modelo CSV</button>
-          <button
-            className="btn-secondary"
-            onClick={() => fileInputRef.current?.click()}
-            disabled={importando}
-          >
-            {importando ? 'Importando...' : 'Importar CSV'}
-          </button>
+          {isAdmin && <button className="btn-danger" onClick={handleLimparTodos}>Limpar todos</button>}
+          {isAdmin && <button className="btn-secondary" onClick={handleBaixarModelo}>Baixar Modelo Livros</button>}
+          {isAdmin && (
+            <button
+              className="btn-secondary"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={importando}
+            >
+              {importando ? 'Importando...' : 'Importar Livros CSV'}
+            </button>
+          )}
           <input
             ref={fileInputRef}
             type="file"
             accept=".csv"
             style={{ display: 'none' }}
             onChange={handleFileSelect}
+          />
+          {isAdmin && <button className="btn-secondary" onClick={handleBaixarModeloEstoque}>Baixar Modelo Estoque</button>}
+          {isAdmin && (
+            <button
+              className="btn-secondary"
+              onClick={() => estoqueFileInputRef.current?.click()}
+              disabled={importandoEstoque}
+            >
+              {importandoEstoque ? 'Importando...' : 'Importar Estoque CSV'}
+            </button>
+          )}
+          <input
+            ref={estoqueFileInputRef}
+            type="file"
+            accept=".csv"
+            style={{ display: 'none' }}
+            onChange={handleEstoqueFileSelect}
           />
           <button className="btn-primary" onClick={abrirCriar}>+ Novo Livro</button>
         </div>
@@ -300,6 +385,77 @@ export default function Livros() {
               {importando ? 'Importando...' : 'Confirmar Importação'}
             </button>
             <button className="btn-secondary" onClick={handleCancelarPreview}>
+              Cancelar
+            </button>
+          </div>
+        </div>
+      )}
+
+      {resultadoEstoqueImport && (
+        <div className={`import-result ${resultadoEstoqueImport.erros?.length ? 'import-result--warn' : 'import-result--ok'}`}>
+          <strong>Importação de estoque concluída:</strong> {resultadoEstoqueImport.importados} item(ns) importado(s).
+          {resultadoEstoqueImport.erros?.length > 0 && (
+            <ul>
+              {resultadoEstoqueImport.erros.map((e, i) => <li key={i}>{e}</li>)}
+            </ul>
+          )}
+          <button className="btn-close-result" onClick={() => setResultadoEstoqueImport(null)}>✕</button>
+        </div>
+      )}
+
+      {previewEstoque && (
+        <div className="preview-section">
+          <h2>Pré-visualização — Importação de Estoque</h2>
+
+          {previewEstoque.erros?.length > 0 && (
+            <div className="warnings">
+              <h3>Avisos:</h3>
+              <ul>
+                {previewEstoque.erros.map((e, i) => <li key={i}>{e}</li>)}
+              </ul>
+            </div>
+          )}
+
+          <div className="preview-table">
+            <table>
+              <thead>
+                <tr>
+                  <th>Linha</th>
+                  <th>Código Item</th>
+                  <th>Título</th>
+                  <th>Quantidade</th>
+                  <th>Preço Unitário</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {previewEstoque.preview.map((row) => (
+                  <tr key={row.linha} className={!row.encontrado ? 'row-error' : ''}>
+                    <td>{row.linha}</td>
+                    <td>{row.codigo_item}</td>
+                    <td>{row.titulo}</td>
+                    <td>{row.quantidade}</td>
+                    <td>{row.preco_unitario > 0 ? `R$ ${row.preco_unitario.toFixed(2)}` : '—'}</td>
+                    <td>
+                      <span className={`badge ${row.encontrado ? 'badge-green' : 'badge-gray'}`}>
+                        {row.encontrado ? 'OK' : 'Não encontrado'}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          <div className="preview-actions">
+            <button
+              className="btn-primary"
+              onClick={handleConfirmarImportacaoEstoque}
+              disabled={importandoEstoque || previewEstoque.preview.every((r) => !r.encontrado)}
+            >
+              {importandoEstoque ? 'Importando...' : 'Confirmar Importação de Estoque'}
+            </button>
+            <button className="btn-secondary" onClick={handleCancelarPreviewEstoque}>
               Cancelar
             </button>
           </div>

@@ -28,7 +28,7 @@ def obter_usuario_por_email(db: Session, email: str):
 
 def listar_usuarios(db: Session, filial_id: int = None, skip: int = 0, limit: int = 100):
     """List users"""
-    query = db.query(Usuario)
+    query = db.query(Usuario).filter(Usuario.ativo == True)
     if filial_id:
         query = query.filter(Usuario.filial_id == filial_id)
     return query.offset(skip).limit(limit).all()
@@ -38,11 +38,13 @@ def atualizar_usuario(db: Session, usuario_id: int, usuario_data: UsuarioAtualiz
     db_usuario = obter_usuario_por_id(db, usuario_id)
     if not db_usuario:
         return None
-    
+
     update_data = usuario_data.dict(exclude_unset=True)
+    if "senha" in update_data:
+        db_usuario.senha_hash = hash_password(update_data.pop("senha"))
     for field, value in update_data.items():
         setattr(db_usuario, field, value)
-    
+
     db.add(db_usuario)
     db.commit()
     db.refresh(db_usuario)

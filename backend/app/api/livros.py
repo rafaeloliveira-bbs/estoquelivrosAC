@@ -52,7 +52,7 @@ async def baixar_template_csv(user=Depends(get_current_user)):
 async def preview_csv(
     file: UploadFile = File(...),
     db: Session = Depends(get_db),
-    user=Depends(requer_role(["operador", "admin"])),
+    user=Depends(requer_role(["admin"])),
 ):
     """Pré-visualiza o conteúdo do CSV antes da importação."""
     content = await file.read()
@@ -148,7 +148,7 @@ async def preview_csv(
 async def importar_csv(
     file: UploadFile = File(...),
     db: Session = Depends(get_db),
-    user=Depends(requer_role(["operador", "admin"])),
+    user=Depends(requer_role(["admin"])),
 ):
     """Importa livros a partir de um arquivo CSV."""
     content = await file.read()
@@ -270,7 +270,7 @@ async def limpar_todos_livros(
 async def criar_novo_livro(
     livro: LivroCriar,
     db: Session = Depends(get_db),
-    user=Depends(requer_role(["operador", "admin"])),
+    user=Depends(requer_role(["gestor", "admin"])),
 ):
     novo_livro = criar_livro(db, livro)
     logger.info(f"Livro criado: {novo_livro.titulo}")
@@ -328,7 +328,7 @@ async def atualizar(
     livro_id: int,
     livro_data: LivroAtualizar,
     db: Session = Depends(get_db),
-    user=Depends(requer_role(["operador", "admin"])),
+    user=Depends(requer_role(["gestor", "admin"])),
 ):
     livro = obter_livro_por_id(db, livro_id)
     if not livro or livro.filial_id != user["filial_id"]:

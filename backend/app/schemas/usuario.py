@@ -5,7 +5,7 @@ from datetime import datetime
 class UsuarioBase(BaseModel):
     nome: str
     email: EmailStr
-    role: str = "operador"
+    role: str = "gestor"
     filial_id: int
 
 class UsuarioCriar(UsuarioBase):
@@ -16,6 +16,7 @@ class UsuarioAtualizar(BaseModel):
     email: Optional[EmailStr] = None
     role: Optional[str] = None
     ativo: Optional[bool] = None
+    senha: Optional[str] = None
 
 class UsuarioResposta(UsuarioBase):
     id: int

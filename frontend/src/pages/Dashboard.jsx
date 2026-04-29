@@ -25,25 +25,21 @@ export default function Dashboard() {
       <h1>Dashboard</h1>
 
       <div className="cards-container">
-        {estoque && (
-          <div className="card">
-            <h3>Estoque Total</h3>
-            <p className="value">{estoque.total_itens}</p>
-            <p className="label">Itens Únicos</p>
-          </div>
-        )}
+        <div className="card">
+          <h3>Total de Ítens</h3>
+          <p className="value">{estoque?.total_itens ?? '—'}</p>
+          <p className="label">Ítens diferentes</p>
+        </div>
 
-        {alertas && (
-          <div className="card alert">
-            <h3>Alertas de Mínimo</h3>
-            <p className="value">{alertas.total_alertas}</p>
-            <p className="label">Itens em Alerta</p>
-          </div>
-        )}
+        <div className="card">
+          <h3>Estoque</h3>
+          <p className="value">{estoque?.total_quantidade ?? '—'}</p>
+          <p className="label">Unidades em estoque</p>
+        </div>
       </div>
 
       <div className="section">
-        <h2>Itens em Estoque</h2>
+        <h2>Ítens em Estoque</h2>
         {estoque?.itens?.length > 0 ? (
           <table className="table">
             <thead>
@@ -74,7 +70,7 @@ export default function Dashboard() {
 
       {alertas?.alertas?.length > 0 && (
         <div className="section">
-          <h2>Alertas Ativos</h2>
+          <h2>Alertas de Estoque Mínimo</h2>
           <div className="alerts-list">
             {alertas.alertas.map((alerta) => (
               <div key={alerta.livro_id} className="alert-item">

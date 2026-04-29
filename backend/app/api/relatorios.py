@@ -26,6 +26,7 @@ async def estoque_atual(
         "filial_id": user["filial_id"],
         "data_geracao": date.today().isoformat(),
         "total_itens": len(relatorio),
+        "total_quantidade": sum(item["quantidade_total"] for item in relatorio),
         "itens": relatorio
     }
 

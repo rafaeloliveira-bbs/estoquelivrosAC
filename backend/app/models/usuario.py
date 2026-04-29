@@ -12,7 +12,7 @@ class Usuario(Base):
     nome = Column(String(150), nullable=False)
     email = Column(String(150), unique=True, nullable=False, index=True)
     senha_hash = Column(String(255), nullable=False)
-    role = Column(String(20), default="operador")  # admin/operador/consulta
+    role = Column(String(20), default="gestor")  # admin/gestor
     ativo = Column(Boolean, default=True)
     
     ultimo_acesso = Column(DateTime, nullable=True)

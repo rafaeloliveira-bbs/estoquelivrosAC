@@ -30,7 +30,7 @@ async def listar(
     user = Depends(requer_admin())
 ):
     """List users"""
-    usuarios = listar_usuarios(db, skip=skip, limit=limit)
+    usuarios = listar_usuarios(db, filial_id=user["filial_id"], skip=skip, limit=limit)
     return usuarios
 
 @router.get("/{usuario_id}", response_model=UsuarioResposta)
