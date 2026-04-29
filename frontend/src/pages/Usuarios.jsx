@@ -67,7 +67,6 @@ export default function Usuarios() {
           email: form.email,
           senha: form.senha,
           role: form.role,
-          filial_id: parseInt(form.filial_id),
         };
         await usuariosAPI.criar(payload);
         setSucesso('Usuário criado com sucesso!');
@@ -213,19 +212,6 @@ export default function Usuarios() {
                 </div>
               </div>
 
-              {modal === 'criar' && (
-                <div className="form-group">
-                  <label>ID da Filial *</label>
-                  <input
-                    name="filial_id"
-                    type="number"
-                    min="1"
-                    value={form.filial_id}
-                    onChange={handleChange}
-                    required
-                  />
-                </div>
-              )}
 
               {modal === 'editar' && (
                 <div className="form-group form-group--inline">

@@ -10,6 +10,7 @@ class UsuarioBase(BaseModel):
 
 class UsuarioCriar(UsuarioBase):
     senha: str
+    filial_id: Optional[int] = None
 
 class UsuarioAtualizar(BaseModel):
     nome: Optional[str] = None

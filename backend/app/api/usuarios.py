@@ -18,6 +18,8 @@ async def criar_novo_usuario(
     user = Depends(requer_admin())
 ):
     """Create new user (admin only)"""
+    if usuario.filial_id is None:
+        usuario.filial_id = user["filial_id"]
     novo_usuario = criar_usuario(db, usuario)
     logger.info(f"Novo usuário criado: {usuario.email}")
     return novo_usuario
