@@ -5,6 +5,7 @@ import Movimentacoes from './pages/Movimentacoes';
 import Livros from './pages/Livros';
 import Relatorios from './pages/Relatorios';
 import Usuarios from './pages/Usuarios';
+import Filiais from './pages/Filiais';
 import { getUserRole } from './utils/auth';
 import logo from './logodef.jpeg';
 import './App.css';
@@ -62,6 +63,7 @@ function Navigation() {
         {navLink('/livros', 'Livros')}
         {navLink('/movimentacoes', 'Movimentações')}
         {navLink('/relatorios', 'Relatórios')}
+        {navLink('/filiais', 'Filiais')}
         {role === 'admin' && navLink('/usuarios', 'Usuários')}
         <li>
           <button onClick={handleLogout} className="logout-btn">Sair</button>
@@ -81,6 +83,7 @@ export default function App() {
         <Route path="/livros" element={<PrivateRoute><Livros /></PrivateRoute>} />
         <Route path="/movimentacoes" element={<PrivateRoute><Movimentacoes /></PrivateRoute>} />
         <Route path="/relatorios" element={<PrivateRoute><Relatorios /></PrivateRoute>} />
+        <Route path="/filiais" element={<PrivateRoute><Filiais /></PrivateRoute>} />
         <Route path="/usuarios" element={<AdminRoute><Usuarios /></AdminRoute>} />
       </Routes>
     </Router>

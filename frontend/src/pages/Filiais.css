@@ -1,0 +1,131 @@
+.filiais-page {
+  padding: 2rem;
+  max-width: 1000px;
+  margin: 0 auto;
+}
+
+.filiais-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
+}
+
+.filiais-header h1 {
+  margin: 0;
+}
+
+.filiais-table {
+  width: 100%;
+  border-collapse: collapse;
+  background: #fff;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+}
+
+.filiais-table th,
+.filiais-table td {
+  padding: 0.75rem 1rem;
+  text-align: left;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.filiais-table th {
+  background: #f7f7f7;
+  font-weight: 600;
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  color: #666;
+}
+
+.filiais-table tr:last-child td {
+  border-bottom: none;
+}
+
+.filiais-table tr:hover td {
+  background: #fafafa;
+}
+
+.btn-edit {
+  background: none;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  padding: 0.3rem 0.75rem;
+  cursor: pointer;
+  font-size: 0.85rem;
+  color: #444;
+  transition: border-color 0.15s;
+}
+
+.btn-edit:hover {
+  border-color: #888;
+  color: #111;
+}
+
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.modal {
+  background: #fff;
+  border-radius: 10px;
+  padding: 2rem;
+  width: 420px;
+  max-width: 95vw;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.18);
+}
+
+.modal h2 {
+  margin: 0 0 1.25rem;
+  font-size: 1.2rem;
+}
+
+.filiais-form .form-group {
+  margin-bottom: 1rem;
+}
+
+.filiais-form .form-group label {
+  display: block;
+  font-size: 0.85rem;
+  font-weight: 600;
+  margin-bottom: 0.3rem;
+  color: #555;
+}
+
+.filiais-form .form-group input {
+  width: 100%;
+  padding: 0.55rem 0.75rem;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  font-size: 0.95rem;
+  box-sizing: border-box;
+}
+
+.filiais-form .form-group input:disabled {
+  background: #f5f5f5;
+  color: #999;
+}
+
+.modal-actions {
+  display: flex;
+  gap: 0.75rem;
+  margin-top: 1.5rem;
+  justify-content: flex-end;
+}
+
+.alert-success {
+  background: #e6f9ec;
+  color: #1a7a3c;
+  border: 1px solid #b2e4c5;
+  border-radius: 6px;
+  padding: 0.75rem 1rem;
+  margin-bottom: 1rem;
+  font-size: 0.9rem;
+}

@@ -412,6 +412,18 @@ async def listar_com_estoque(
     return listar_livros_com_estoque(db, filial_id=user["filial_id"], termo=termo or None, skip=skip, limit=limit)
 
 
+@router.get("/por-codigo/{codigo_item}", response_model=LivroResposta)
+async def obter_por_codigo(
+    codigo_item: int,
+    db: Session = Depends(get_db),
+    user=Depends(get_current_user),
+):
+    livro = obter_livro_por_codigo(db, codigo_item, user["filial_id"])
+    if not livro:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Item não encontrado")
+    return livro
+
+
 @router.get("/{livro_id}", response_model=LivroResposta)
 async def obter(
     livro_id: int,

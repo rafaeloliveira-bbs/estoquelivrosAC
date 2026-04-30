@@ -4,29 +4,61 @@ import { getUserRole } from '../utils/auth';
 import { parseMoeda, formatMoedaBR } from '../utils/moeda';
 import './Movimentacoes.css';
 
+const MOEDA_FIELDS = new Set(['valor_unitario', 'valor_total']);
+
+const FIELD_LABELS = {
+  data: 'Data',
+  nf: 'Nº NF',
+  codigo_item: 'Código do Item',
+  grade: 'Grade',
+  titulo: 'Título',
+  valor_unitario: 'Valor Unitário',
+  quantidade: 'Quantidade',
+  valor_total: 'Valor Total',
+  observacao: 'Observação',
+  filial_id: 'ID Filial',
+};
+
+const hoje = () => new Date().toLocaleDateString('en-CA');
+
 export default function Movimentacoes() {
-  const [secao, setSecao] = useState('registrar'); // 'registrar' | 'historico'
-  const [tipo, setTipo] = useState('venda');
+  const [secao, setSecao] = useState('registrar');
 
-  // campos do formulário
-  const [buscaLivro, setBuscaLivro] = useState('');
-  const [resultadosBusca, setResultadosBusca] = useState([]);
-  const [livroSelecionado, setLivroSelecionado] = useState(null);
-  const [quantidade, setQuantidade] = useState('');
-  const [precoUnitario, setPrecoUnitario] = useState('');
-  const [numeroLote, setNumeroLote] = useState('');
-  const [fornecedor, setFornecedor] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [message, setMessage] = useState('');
-  const [error, setError] = useState('');
+  // ── Compra form ──────────────────────────────────────────────────────────────
+  const [dataCompra, setDataCompra] = useState(hoje());
+  const [nfCompra, setNfCompra] = useState('');
+  const [codigoCompra, setCodigoCompra] = useState('');
+  const [gradeCompra, setGradeCompra] = useState('');
+  const [tituloCompra, setTituloCompra] = useState('');
+  const [valorUnitCompra, setValorUnitCompra] = useState('');
+  const [qtdCompra, setQtdCompra] = useState('');
+  const [obsCompra, setObsCompra] = useState('');
+  const [livroIdCompra, setLivroIdCompra] = useState(null);
+  const [loadingCompra, setLoadingCompra] = useState(false);
+  const [msgCompra, setMsgCompra] = useState('');
+  const [errCompra, setErrCompra] = useState('');
+  const [lookupErrCompra, setLookupErrCompra] = useState('');
 
-  // histórico
+  // ── Venda form ───────────────────────────────────────────────────────────────
+  const [dataVenda, setDataVenda] = useState(hoje());
+  const [obsVenda, setObsVenda] = useState('');
+  const [codigoVenda, setCodigoVenda] = useState('');
+  const [tituloVenda, setTituloVenda] = useState('');
+  const [valorUnitVenda, setValorUnitVenda] = useState('');
+  const [qtdVenda, setQtdVenda] = useState('');
+  const [livroIdVenda, setLivroIdVenda] = useState(null);
+  const [loadingVenda, setLoadingVenda] = useState(false);
+  const [msgVenda, setMsgVenda] = useState('');
+  const [errVenda, setErrVenda] = useState('');
+  const [lookupErrVenda, setLookupErrVenda] = useState('');
+
+  // ── Histórico ────────────────────────────────────────────────────────────────
   const [historico, setHistorico] = useState([]);
   const [dataInicio, setDataInicio] = useState('');
   const [dataFim, setDataFim] = useState('');
   const [loadingHistorico, setLoadingHistorico] = useState(false);
 
-  // importação CSV de histórico de entradas
+  // ── CSV import ───────────────────────────────────────────────────────────────
   const isAdmin = getUserRole() === 'admin' || getUserRole() === 'gestor';
   const fileInputRef = useRef(null);
   const csvMenuRef = useRef(null);
@@ -37,7 +69,6 @@ export default function Movimentacoes() {
   const [resultadoImport, setResultadoImport] = useState(null);
   const [erroImport, setErroImport] = useState('');
 
-  // fecha o menu CSV ao clicar fora
   useEffect(() => {
     const fechar = (e) => {
       if (csvMenuRef.current && !csvMenuRef.current.contains(e.target)) {
@@ -48,60 +79,7 @@ export default function Movimentacoes() {
     return () => document.removeEventListener('mousedown', fechar);
   }, []);
 
-  // busca de livro ao digitar
-  useEffect(() => {
-    if (!buscaLivro.trim()) { setResultadosBusca([]); return; }
-    const t = setTimeout(async () => {
-      try {
-        const res = await livrosAPI.buscar(buscaLivro.trim(), 0, 8);
-        setResultadosBusca(res.data);
-      } catch { setResultadosBusca([]); }
-    }, 300);
-    return () => clearTimeout(t);
-  }, [buscaLivro]);
-
-  const selecionarLivro = (livro) => {
-    setLivroSelecionado(livro);
-    setBuscaLivro(livro.titulo);
-    setResultadosBusca([]);
-  };
-
-  const resetForm = () => {
-    setBuscaLivro('');
-    setLivroSelecionado(null);
-    setResultadosBusca([]);
-    setQuantidade('');
-    setPrecoUnitario('');
-    setNumeroLote('');
-    setFornecedor('');
-  };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    const livroId = livroSelecionado?.id || parseInt(buscaLivro) || null;
-    if (!livroId) { setError('Selecione um livro'); return; }
-    setLoading(true);
-    setMessage('');
-    setError('');
-    try {
-      if (tipo === 'venda') {
-        await movimentacoesAPI.registrarVenda(livroId, parseInt(quantidade), '', '');
-        setMessage('Venda registrada com sucesso!');
-      } else {
-        await movimentacoesAPI.registrarCompra(
-          livroId, parseInt(quantidade),
-          parseMoeda(precoUnitario), numeroLote, fornecedor
-        );
-        setMessage('Compra registrada com sucesso!');
-      }
-      resetForm();
-    } catch (err) {
-      setError(err.response?.data?.detail || 'Erro ao registrar movimentação');
-    } finally {
-      setLoading(false);
-    }
-  };
-
+  // ── Histórico loader ─────────────────────────────────────────────────────────
   const carregarHistorico = async () => {
     setLoadingHistorico(true);
     try {
@@ -118,8 +96,85 @@ export default function Movimentacoes() {
     if (secao === 'historico') carregarHistorico();
   }, [secao]);
 
-  // ── CSV histórico de entradas ────────────────────────────────────────────────
+  // ── Lookup por código de item ─────────────────────────────────────────────────
+  const buscarLivro = async (codigo, setId, setTitulo, setGrade, setLookupErr) => {
+    const n = parseInt(codigo);
+    if (!n) return;
+    setLookupErr('');
+    try {
+      const res = await livrosAPI.porCodigo(n);
+      setId(res.data.id);
+      setTitulo(res.data.titulo || '');
+      if (setGrade) setGrade(res.data.grade || '');
+    } catch {
+      setId(null);
+      setTitulo('');
+      if (setGrade) setGrade('');
+      setLookupErr('Item não encontrado');
+    }
+  };
 
+  // ── Valor total calculado ────────────────────────────────────────────────────
+  const totalCompra = (parseMoeda(valorUnitCompra) || 0) * (parseInt(qtdCompra) || 0);
+  const totalVenda = (parseMoeda(valorUnitVenda) || 0) * (parseInt(qtdVenda) || 0);
+
+  // ── Submit compra ────────────────────────────────────────────────────────────
+  const handleSubmitCompra = async (e) => {
+    e.preventDefault();
+    if (!livroIdCompra) { setErrCompra('Pesquise um item pelo código antes de registrar'); return; }
+    setLoadingCompra(true);
+    setMsgCompra(''); setErrCompra('');
+    try {
+      await movimentacoesAPI.registrarCompra(
+        livroIdCompra,
+        parseInt(qtdCompra),
+        parseMoeda(valorUnitCompra),
+        nfCompra || null,
+        null,
+        obsCompra || null,
+        dataCompra,
+      );
+      setMsgCompra('Compra registrada com sucesso!');
+      setCodigoCompra(''); setGradeCompra(''); setTituloCompra('');
+      setNfCompra(''); setValorUnitCompra(''); setQtdCompra('');
+      setObsCompra(''); setLivroIdCompra(null);
+      setDataCompra(hoje());
+    } catch (err) {
+      setErrCompra(err.response?.data?.detail || 'Erro ao registrar compra');
+    } finally {
+      setLoadingCompra(false);
+    }
+  };
+
+  // ── Submit venda ─────────────────────────────────────────────────────────────
+  const handleSubmitVenda = async (e) => {
+    e.preventDefault();
+    if (!livroIdVenda) { setErrVenda('Pesquise um item pelo código antes de registrar'); return; }
+    setLoadingVenda(true);
+    setMsgVenda(''); setErrVenda('');
+    try {
+      await movimentacoesAPI.registrarVenda(
+        livroIdVenda,
+        parseInt(qtdVenda),
+        parseMoeda(valorUnitVenda),
+        dataVenda,
+        null,
+        null,
+        obsVenda || null,
+      );
+      setMsgVenda('Venda registrada com sucesso!');
+      setCodigoVenda(''); setTituloVenda('');
+      setValorUnitVenda(''); setQtdVenda('');
+      setObsVenda(''); setLivroIdVenda(null);
+      setDataVenda(hoje());
+    } catch (err) {
+      setErrVenda(err.response?.data?.detail || 'Erro ao registrar venda');
+    } finally {
+      setLoadingVenda(false);
+    }
+  };
+
+  // ── CSV import handlers ──────────────────────────────────────────────────────
   const handleBaixarModelo = async () => {
     try {
       const res = await movimentacoesAPI.templateHistoricoEntradas();
@@ -163,6 +218,9 @@ export default function Movimentacoes() {
       setResultadoImport(res.data);
       setPreviewEntradas(null);
       setSelectedFile(null);
+      setDataInicio('');
+      setDataFim('');
+      setSecao('historico');
     } catch (err) {
       setErroImport(err.response?.data?.detail || 'Erro ao importar planilha');
     } finally {
@@ -174,21 +232,6 @@ export default function Movimentacoes() {
     setPreviewEntradas(null);
     setSelectedFile(null);
     setErroImport('');
-  };
-
-  // labels legíveis para os campos do mapeamento
-  const MOEDA_FIELDS = new Set(['valor_unitario', 'valor_total']);
-
-  const FIELD_LABELS = {
-    data: 'Data',
-    nf: 'Nº NF',
-    codigo_item: 'Código do Item',
-    grade: 'Grade',
-    titulo: 'Título',
-    valor_unitario: 'Valor Unitário',
-    quantidade: 'Quantidade',
-    valor_total: 'Valor Total',
-    observacao: 'Observação',
   };
 
   return (
@@ -206,62 +249,16 @@ export default function Movimentacoes() {
 
       {secao === 'registrar' && (
         <div className="form-container">
-          <div className="registrar-header">
-            <div className="tabs">
-              <button className={`tab ${tipo === 'venda' ? 'active' : ''}`} onClick={() => setTipo('venda')}>
-                Venda
-              </button>
-              <button className={`tab ${tipo === 'compra' ? 'active' : ''}`} onClick={() => setTipo('compra')}>
-                Compra
-              </button>
-            </div>
-
-            {isAdmin && tipo === 'compra' && (
-              <div className="csv-dropdown" ref={csvMenuRef}>
-                <button
-                  className="btn-secondary"
-                  onClick={() => setCsvMenuAberto((v) => !v)}
-                  disabled={importando}
-                >
-                  {importando ? 'Importando...' : 'Importar Histórico CSV ▾'}
-                </button>
-                {csvMenuAberto && (
-                  <div className="csv-menu">
-                    <button onClick={() => { handleBaixarModelo(); setCsvMenuAberto(false); }}>
-                      Baixar Modelo
-                    </button>
-                    <button onClick={() => { fileInputRef.current?.click(); setCsvMenuAberto(false); }}>
-                      Importar CSV
-                    </button>
-                  </div>
-                )}
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept=".csv"
-                  style={{ display: 'none' }}
-                  onChange={handleFileSelect}
-                />
-              </div>
-            )}
-          </div>
-
           {erroImport && <div className="alert-error">{erroImport}</div>}
 
           {resultadoImport && (
             <div className={`import-result ${resultadoImport.erros?.length ? 'import-result--warn' : 'import-result--ok'}`}>
               <strong>Importação concluída:</strong> {resultadoImport.importados} entrada(s) registrada(s).
               {resultadoImport.avisos?.length > 0 && (
-                <>
-                  <br /><strong>Avisos:</strong>
-                  <ul>{resultadoImport.avisos.map((a, i) => <li key={i}>{a}</li>)}</ul>
-                </>
+                <><br /><strong>Avisos:</strong><ul>{resultadoImport.avisos.map((a, i) => <li key={i}>{a}</li>)}</ul></>
               )}
               {resultadoImport.erros?.length > 0 && (
-                <>
-                  <br /><strong>Erros:</strong>
-                  <ul>{resultadoImport.erros.map((e, i) => <li key={i}>{e}</li>)}</ul>
-                </>
+                <><br /><strong>Erros:</strong><ul>{resultadoImport.erros.map((e, i) => <li key={i}>{e}</li>)}</ul></>
               )}
               <button className="btn-close-result" onClick={() => setResultadoImport(null)}>✕</button>
             </div>
@@ -270,14 +267,12 @@ export default function Movimentacoes() {
           {previewEntradas && (
             <div className="preview-section">
               <h2>Pré-visualização — Histórico de Entradas</h2>
-
               {previewEntradas.warnings?.length > 0 && (
                 <div className="warnings">
                   <strong>Avisos:</strong>
                   <ul>{previewEntradas.warnings.map((w, i) => <li key={i}>{w}</li>)}</ul>
                 </div>
               )}
-
               <div className="mapping-info">
                 <h3>Mapeamento de Colunas:</h3>
                 <div className="mapping-grid">
@@ -288,7 +283,6 @@ export default function Movimentacoes() {
                   ))}
                 </div>
               </div>
-
               {previewEntradas.mapped_preview?.length > 0 && (
                 <div className="preview-table">
                   <h3>Primeiras {previewEntradas.mapped_preview.length} linha(s) processadas:</h3>
@@ -304,10 +298,7 @@ export default function Movimentacoes() {
                       {previewEntradas.mapped_preview.map((row, idx) => (
                         <tr key={idx}>
                           {Object.values(row).map((val, ci) => (
-                            <td
-                              key={ci}
-                              className={typeof val === 'string' && val.startsWith('Erro:') ? 'error-cell' : ''}
-                            >
+                            <td key={ci} className={typeof val === 'string' && val.startsWith('Erro:') ? 'error-cell' : ''}>
                               {val === null || val === undefined
                                 ? '-'
                                 : MOEDA_FIELDS.has(Object.keys(previewEntradas.mapped_preview[0])[ci]) && typeof val === 'number'
@@ -321,72 +312,189 @@ export default function Movimentacoes() {
                   </table>
                 </div>
               )}
-
               <div className="preview-actions">
                 <button className="btn-primary" onClick={handleConfirmarImportacao} disabled={importando}>
                   {importando ? 'Importando...' : 'Confirmar Importação'}
                 </button>
-                <button className="btn-secondary" onClick={handleCancelarPreview}>
-                  Cancelar
-                </button>
+                <button className="btn-secondary" onClick={handleCancelarPreview}>Cancelar</button>
               </div>
             </div>
           )}
 
-          <form onSubmit={handleSubmit} className="form">
-            <div className="form-group" style={{ position: 'relative' }}>
-              <label htmlFor="busca-livro">ID do Livro</label>
-              <input
-                id="busca-livro"
-                type="text"
-                value={buscaLivro}
-                onChange={(e) => { setBuscaLivro(e.target.value); setLivroSelecionado(null); }}
-                placeholder="Digite o título para buscar..."
-                required
-              />
-              {resultadosBusca.length > 0 && (
-                <ul className="autocomplete">
-                  {resultadosBusca.map((l) => (
-                    <li key={l.id} onClick={() => selecionarLivro(l)}>
-                      <strong>{l.titulo}</strong> <span>— {l.autor}</span>
-                    </li>
-                  ))}
-                </ul>
-              )}
-              {livroSelecionado && (
-                <span className="livro-selecionado">✓ ID {livroSelecionado.id}</span>
-              )}
+          {!previewEntradas && (
+            <div className="registrar-grid">
+              {/* ── COMPRA ── */}
+              <div className="registrar-col">
+                <div className="registrar-col-header">
+                  <h2>Compra</h2>
+                  {isAdmin && (
+                    <div className="csv-dropdown" ref={csvMenuRef}>
+                      <button
+                        className="btn-secondary"
+                        onClick={() => setCsvMenuAberto((v) => !v)}
+                        disabled={importando}
+                      >
+                        {importando ? 'Importando...' : 'Importar CSV ▾'}
+                      </button>
+                      {csvMenuAberto && (
+                        <div className="csv-menu">
+                          <button onClick={() => { handleBaixarModelo(); setCsvMenuAberto(false); }}>Baixar Modelo</button>
+                          <button onClick={() => { fileInputRef.current?.click(); setCsvMenuAberto(false); }}>Importar CSV</button>
+                        </div>
+                      )}
+                      <input ref={fileInputRef} type="file" accept=".csv" style={{ display: 'none' }} onChange={handleFileSelect} />
+                    </div>
+                  )}
+                </div>
+
+                <form onSubmit={handleSubmitCompra} className="form">
+                  <div className="form-row-2">
+                    <div className="form-group">
+                      <label>Data</label>
+                      <input type="date" value={dataCompra} onChange={(e) => setDataCompra(e.target.value)} required />
+                    </div>
+                    <div className="form-group">
+                      <label>Nº NF</label>
+                      <input type="text" value={nfCompra} onChange={(e) => setNfCompra(e.target.value)} placeholder="Número da nota" />
+                    </div>
+                  </div>
+
+                  <div className="form-group" style={{ position: 'relative' }}>
+                    <label>Código do Item</label>
+                    <input
+                      type="text"
+                      value={codigoCompra}
+                      onChange={(e) => {
+                        setCodigoCompra(e.target.value);
+                        setLivroIdCompra(null);
+                        setTituloCompra('');
+                        setGradeCompra('');
+                        setLookupErrCompra('');
+                      }}
+                      onBlur={() => buscarLivro(codigoCompra, setLivroIdCompra, setTituloCompra, setGradeCompra, setLookupErrCompra)}
+                      placeholder="Ex: 1001"
+                      required
+                    />
+                    {lookupErrCompra && <span className="lookup-err">{lookupErrCompra}</span>}
+                  </div>
+
+                  <div className="form-row-2">
+                    <div className="form-group">
+                      <label>Grade</label>
+                      <input type="text" value={gradeCompra} readOnly placeholder="—" className="input-readonly" />
+                    </div>
+                    <div className="form-group">
+                      <label>Título</label>
+                      <input type="text" value={tituloCompra} readOnly placeholder="—" className="input-readonly" />
+                    </div>
+                  </div>
+
+                  <div className="form-row-3">
+                    <div className="form-group">
+                      <label>Valor Unit.</label>
+                      <input
+                        type="text"
+                        inputMode="decimal"
+                        placeholder="0,00"
+                        value={valorUnitCompra}
+                        onChange={(e) => setValorUnitCompra(e.target.value)}
+                        required
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label>Quantidade</label>
+                      <input type="number" min="1" value={qtdCompra} onChange={(e) => setQtdCompra(e.target.value)} required />
+                    </div>
+                    <div className="form-group">
+                      <label>Valor Total</label>
+                      <input type="text" value={totalCompra > 0 ? `R$ ${formatMoedaBR(totalCompra)}` : ''} readOnly placeholder="—" className="input-readonly" />
+                    </div>
+                  </div>
+
+                  <div className="form-group">
+                    <label>Observação</label>
+                    <input type="text" value={obsCompra} onChange={(e) => setObsCompra(e.target.value)} placeholder="Opcional" />
+                  </div>
+
+                  {msgCompra && <div className="success">{msgCompra}</div>}
+                  {errCompra && <div className="error">{errCompra}</div>}
+
+                  <button type="submit" disabled={loadingCompra} className="submit-btn">
+                    {loadingCompra ? 'Processando...' : 'Registrar Compra'}
+                  </button>
+                </form>
+              </div>
+
+              {/* ── VENDA ── */}
+              <div className="registrar-col">
+                <h2>Venda</h2>
+
+                <form onSubmit={handleSubmitVenda} className="form">
+                  <div className="form-group">
+                    <label>Data</label>
+                    <input type="date" value={dataVenda} onChange={(e) => setDataVenda(e.target.value)} required />
+                  </div>
+
+                  <div className="form-group">
+                    <label>Observações</label>
+                    <input type="text" value={obsVenda} onChange={(e) => setObsVenda(e.target.value)} placeholder="Opcional" />
+                  </div>
+
+                  <div className="form-group" style={{ position: 'relative' }}>
+                    <label>Código do Item</label>
+                    <input
+                      type="text"
+                      value={codigoVenda}
+                      onChange={(e) => {
+                        setCodigoVenda(e.target.value);
+                        setLivroIdVenda(null);
+                        setTituloVenda('');
+                        setLookupErrVenda('');
+                      }}
+                      onBlur={() => buscarLivro(codigoVenda, setLivroIdVenda, setTituloVenda, null, setLookupErrVenda)}
+                      placeholder="Ex: 1001"
+                      required
+                    />
+                    {lookupErrVenda && <span className="lookup-err">{lookupErrVenda}</span>}
+                  </div>
+
+                  <div className="form-group">
+                    <label>Título</label>
+                    <input type="text" value={tituloVenda} readOnly placeholder="—" className="input-readonly" />
+                  </div>
+
+                  <div className="form-row-3">
+                    <div className="form-group">
+                      <label>Valor Unit.</label>
+                      <input
+                        type="text"
+                        inputMode="decimal"
+                        placeholder="0,00"
+                        value={valorUnitVenda}
+                        onChange={(e) => setValorUnitVenda(e.target.value)}
+                        required
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label>Quantidade</label>
+                      <input type="number" min="1" value={qtdVenda} onChange={(e) => setQtdVenda(e.target.value)} required />
+                    </div>
+                    <div className="form-group">
+                      <label>Valor Total</label>
+                      <input type="text" value={totalVenda > 0 ? `R$ ${formatMoedaBR(totalVenda)}` : ''} readOnly placeholder="—" className="input-readonly" />
+                    </div>
+                  </div>
+
+                  {msgVenda && <div className="success">{msgVenda}</div>}
+                  {errVenda && <div className="error">{errVenda}</div>}
+
+                  <button type="submit" disabled={loadingVenda} className="submit-btn">
+                    {loadingVenda ? 'Processando...' : 'Registrar Venda'}
+                  </button>
+                </form>
+              </div>
             </div>
-
-            <div className="form-group">
-              <label htmlFor="quantidade">Quantidade</label>
-              <input id="quantidade" type="number" value={quantidade} onChange={(e) => setQuantidade(e.target.value)} min="1" required />
-            </div>
-
-            {tipo === 'compra' && (
-              <>
-                <div className="form-group">
-                  <label htmlFor="preco-unitario">Preço Unitário</label>
-                  <input id="preco-unitario" type="text" inputMode="decimal" placeholder="R$ 0,00" value={precoUnitario} onChange={(e) => setPrecoUnitario(e.target.value)} required />
-                </div>
-                <div className="form-group">
-                  <label htmlFor="numero-lote">Número do Lote</label>
-                  <input id="numero-lote" type="text" value={numeroLote} onChange={(e) => setNumeroLote(e.target.value)} required />
-                </div>
-                <div className="form-group">
-                  <label htmlFor="fornecedor">Fornecedor</label>
-                  <input id="fornecedor" type="text" value={fornecedor} onChange={(e) => setFornecedor(e.target.value)} />
-                </div>
-              </>
-            )}
-
-            {message && <div className="success">{message}</div>}
-            {error && <div className="error">{error}</div>}
-
-            <button type="submit" disabled={loading} className="submit-btn">
-              {loading ? 'Processando...' : `Registrar ${tipo}`}
-            </button>
-          </form>
+          )}
         </div>
       )}
 
@@ -425,11 +533,11 @@ export default function Movimentacoes() {
                 <tbody>
                   {historico.map((m, i) => (
                     <tr key={i}>
-                      <td>{new Date(m.data_movimento).toLocaleString('pt-BR')}</td>
+                      <td>{m.data}</td>
                       <td>
-                        <span className={`badge-tipo ${m.tipo}`}>{m.tipo}</span>
+                        <span className={`badge-tipo ${m.tipo?.toLowerCase()}`}>{m.tipo}</span>
                       </td>
-                      <td>{m.titulo || m.livro_id}</td>
+                      <td>{m.livro_titulo}</td>
                       <td>{m.quantidade}</td>
                       <td>{m.preco_unitario ? `R$ ${parseFloat(m.preco_unitario).toFixed(2)}` : '-'}</td>
                     </tr>

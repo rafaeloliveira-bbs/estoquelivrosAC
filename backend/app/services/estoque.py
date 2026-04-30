@@ -74,28 +74,38 @@ def registrar_venda(
     filial_id: int,
     motivo: str = None,
     documento_referencia: str = None,
-    observacoes: str = None
+    observacoes: str = None,
+    preco_venda: Decimal = None,
+    data_venda=None,
 ) -> dict:
     """
     Register a sale using FIFO method.
     """
     try:
+        from datetime import date as date_type
+        data_mov = (
+            datetime.combine(data_venda, datetime.min.time())
+            if data_venda and isinstance(data_venda, date_type)
+            else data_venda or datetime.utcnow()
+        )
+
         # Get cost info using FIFO
         custo_info = obter_custo_medio_peps(db, livro_id, filial_id, quantidade)
-        
+
         # Create movements for each batch used
         for lote_uso in custo_info["lotes_usados"]:
+            preco = preco_venda if preco_venda is not None else Decimal(str(lote_uso["preco_unitario"]))
             mov = Movimentacao(
                 filial_id=filial_id,
                 lote_id=lote_uso["lote_id"],
                 usuario_id=usuario_id,
                 tipo="venda",
                 quantidade=lote_uso["quantidade"],
-                preco_unitario=Decimal(str(lote_uso["preco_unitario"])),
+                preco_unitario=preco,
                 motivo=motivo,
                 documento_referencia=documento_referencia,
                 observacoes=observacoes,
-                data_movimento=datetime.utcnow()
+                data_movimento=data_mov,
             )
             criar_movimentacao(db, mov)
             

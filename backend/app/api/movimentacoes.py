@@ -11,6 +11,7 @@ from app.database import get_db
 from app.schemas.movimentacao import MovimentacaoCriar, MovimentacaoResposta
 from app.services.estoque import registrar_venda, registrar_compra, obter_estoque_total
 from app.crud.livro import obter_livro_por_id, obter_livro_por_codigo
+from app.crud.filial import obter_filial_por_id, obter_filial_por_nome
 from app.auth.permissions import get_current_user, requer_role
 from app.config import logger
 
@@ -20,6 +21,8 @@ router = APIRouter(prefix="/movimentacoes", tags=["movimentações"])
 async def registrar_venda_endpoint(
     livro_id: int = Query(...),
     quantidade: int = Query(..., gt=0),
+    preco_unitario: float = Query(None),
+    data_movimento: date = Query(None),
     motivo: str = Query(None),
     documento_referencia: str = Query(None),
     observacoes: str = Query(None),
@@ -34,7 +37,7 @@ async def registrar_venda_endpoint(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Livro não encontrado"
             )
-        
+
         resultado = registrar_venda(
             db,
             livro_id=livro_id,
@@ -43,7 +46,9 @@ async def registrar_venda_endpoint(
             filial_id=user["filial_id"],
             motivo=motivo,
             documento_referencia=documento_referencia,
-            observacoes=observacoes
+            observacoes=observacoes,
+            preco_venda=Decimal(str(preco_unitario)) if preco_unitario is not None else None,
+            data_venda=data_movimento,
         )
         
         logger.info(f"Venda registrada: livro_id={livro_id}, quantidade={quantidade}, usuario_id={user['user_id']}")
@@ -66,7 +71,8 @@ async def registrar_compra_endpoint(
     livro_id: int = Query(...),
     quantidade: int = Query(..., gt=0),
     preco_unitario: float = Query(..., gt=0),
-    numero_lote: str = Query(...),
+    numero_lote: str = Query(None),
+    data_entrada: date = Query(None),
     fornecedor: str = Query(None),
     observacoes: str = Query(None),
     db: Session = Depends(get_db),
@@ -80,7 +86,8 @@ async def registrar_compra_endpoint(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Livro não encontrado"
             )
-        
+
+        lote = numero_lote or f"LC-{(data_entrada or date.today()).strftime('%Y%m%d')}-{livro_id}"
         resultado = registrar_compra(
             db,
             livro_id=livro_id,
@@ -88,9 +95,10 @@ async def registrar_compra_endpoint(
             preco_unitario=Decimal(str(preco_unitario)),
             usuario_id=user["user_id"],
             filial_id=user["filial_id"],
-            numero_lote=numero_lote,
+            numero_lote=lote,
+            data_entrada=data_entrada,
             fornecedor=fornecedor,
-            observacoes=observacoes
+            observacoes=observacoes,
         )
         
         logger.info(f"Compra registrada: livro_id={livro_id}, quantidade={quantidade}")
@@ -137,7 +145,7 @@ async def obter_estoque(
 
 _COLUNAS_HISTORICO = [
     "Data", "Nº NF", "Código do Item", "Grade", "Título",
-    "Valor Unitário", "Quantidade", "Valor Total", "Observação",
+    "Valor Unitário", "Quantidade", "Valor Total", "Observação", "ID Filial",
 ]
 
 
@@ -178,7 +186,7 @@ def _sem_acento(s: str) -> str:
 def _mapear_colunas_historico(fieldnames: list[str]) -> dict:
     col_map = {k: None for k in (
         "data", "nf", "codigo_item", "grade", "titulo",
-        "valor_unitario", "quantidade", "valor_total", "observacao",
+        "valor_unitario", "quantidade", "valor_total", "observacao", "filial_id",
     )}
     for col in fieldnames:
         c = _sem_acento(col)
@@ -203,6 +211,8 @@ def _mapear_colunas_historico(fieldnames: list[str]) -> dict:
             col_map["valor_total"] = col
         elif c in ("observacao", "obs", "obs.", "observacoes"):
             col_map["observacao"] = col
+        elif c in ("id filial", "filial_id", "filial id", "id da filial", "filial"):
+            col_map["filial_id"] = col
     return col_map
 
 
@@ -222,6 +232,7 @@ async def template_historico_entradas_csv(user=Depends(get_current_user)):
         "Quantidade": "50",
         "Valor Total": "1495.00",
         "Observação": "",
+        "ID Filial": "2",
     })
     output.seek(0)
     return StreamingResponse(
@@ -347,9 +358,24 @@ async def importar_historico_entradas_csv(
                 erros.append(f"Linha {i}: 'Código do Item' deve ser numérico (recebido: '{codigo_raw}')")
                 continue
 
-            livro = obter_livro_por_codigo(db, codigo_item, user["filial_id"])
+            # Resolve filial_id (CSV column takes precedence for admins)
+            filial_csv_raw = _get(row, "filial_id")
+            filial_id_row = user["filial_id"]
+            if filial_csv_raw:
+                try:
+                    fid = int(filial_csv_raw)
+                    filial_obj = obter_filial_por_id(db, fid)
+                except ValueError:
+                    filial_obj = obter_filial_por_nome(db, filial_csv_raw)
+                    fid = filial_obj.id if filial_obj else None
+                if not filial_obj:
+                    avisos.append(f"Linha {i}: Filial '{filial_csv_raw}' não encontrada, usando filial do usuário")
+                else:
+                    filial_id_row = fid
+
+            livro = obter_livro_por_codigo(db, codigo_item, filial_id_row)
             if not livro:
-                erros.append(f"Linha {i}: Item '{codigo_item}' não encontrado na filial")
+                erros.append(f"Linha {i}: Item '{codigo_item}' não encontrado na filial {filial_id_row}")
                 continue
 
             # Validações opcionais de Grade e Título
@@ -413,7 +439,7 @@ async def importar_historico_entradas_csv(
                 quantidade=quantidade,
                 preco_unitario=valor_unitario,
                 usuario_id=user["user_id"],
-                filial_id=user["filial_id"],
+                filial_id=filial_id_row,
                 numero_lote=numero_lote,
                 data_entrada=data_entrada,
                 observacoes=observacao,

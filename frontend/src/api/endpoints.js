@@ -10,6 +10,7 @@ export const livrosAPI = {
   listarComEstoque: (termo = null, skip = 0, limit = 100) =>
     apiClient.get('/livros/com-estoque', { params: { termo, skip, limit } }),
   obter: (id) => apiClient.get(`/livros/${id}`),
+  porCodigo: (codigo_item) => apiClient.get(`/livros/por-codigo/${codigo_item}`),
   criar: (livro) => apiClient.post('/livros/', livro),
   atualizar: (id, livro) => apiClient.put(`/livros/${id}`, livro),
   deletar: (id) => apiClient.delete(`/livros/${id}`),
@@ -25,13 +26,13 @@ export const livrosAPI = {
 };
 
 export const movimentacoesAPI = {
-  registrarVenda: (livro_id, quantidade, motivo, documento) =>
+  registrarVenda: (livro_id, quantidade, preco_unitario, data_movimento, motivo, documento, observacoes) =>
     apiClient.post('/movimentacoes/venda', null, {
-      params: { livro_id, quantidade, motivo, documento_referencia: documento },
+      params: { livro_id, quantidade, preco_unitario, data_movimento, motivo, documento_referencia: documento, observacoes },
     }),
-  registrarCompra: (livro_id, quantidade, preco_unitario, numero_lote, fornecedor) =>
+  registrarCompra: (livro_id, quantidade, preco_unitario, numero_lote, fornecedor, observacoes, data_entrada) =>
     apiClient.post('/movimentacoes/compra', null, {
-      params: { livro_id, quantidade, preco_unitario, numero_lote, fornecedor },
+      params: { livro_id, quantidade, preco_unitario, numero_lote, fornecedor, observacoes, data_entrada },
     }),
   obterEstoque: (livro_id) => apiClient.get(`/movimentacoes/estoque/${livro_id}`),
   templateHistoricoEntradas: () =>

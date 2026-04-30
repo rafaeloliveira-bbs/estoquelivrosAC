@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session
-from datetime import date, timedelta
+from datetime import date
 from app.database import get_db
 from app.services.relatorios import (
     relatorio_estoque_atual,
@@ -38,8 +38,6 @@ async def movimentacoes(
     user = Depends(get_current_user)
 ):
     """Get movement report"""
-    if not data_inicio:
-        data_inicio = date.today() - timedelta(days=30)
     if not data_fim:
         data_fim = date.today()
     

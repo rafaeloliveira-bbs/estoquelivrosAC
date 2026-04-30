@@ -60,19 +60,23 @@ def relatorio_estoque_atual(db: Session, filial_id: int) -> list:
 def relatorio_movimentacoes(
     db: Session,
     filial_id: int,
-    data_inicio: date,
+    data_inicio: date | None,
     data_fim: date
 ) -> list:
+    filters = [
+        Movimentacao.filial_id == filial_id,
+        Movimentacao.data_movimento <= data_fim,
+    ]
+    if data_inicio:
+        filters.append(Movimentacao.data_movimento >= data_inicio)
+
     movs = (
         db.query(Movimentacao)
         .options(
             joinedload(Movimentacao.lote).joinedload(Lote.livro),
             joinedload(Movimentacao.usuario),
         )
-        .filter(
-            Movimentacao.filial_id == filial_id,
-            Movimentacao.data_movimento.between(data_inicio, data_fim),
-        )
+        .filter(*filters)
         .order_by(Movimentacao.data_movimento.desc())
         .all()
     )

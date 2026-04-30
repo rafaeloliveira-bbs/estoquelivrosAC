@@ -45,7 +45,6 @@ export default function Dashboard() {
             <thead>
               <tr>
                 <th>Título</th>
-                <th>Autor</th>
                 <th>ISBN</th>
                 <th>Quantidade</th>
                 <th>Valor Total</th>
@@ -55,7 +54,6 @@ export default function Dashboard() {
               {estoque.itens.slice(0, 10).map((item) => (
                 <tr key={item.livro_id}>
                   <td>{item.titulo}</td>
-                  <td>{item.autor}</td>
                   <td>{item.isbn}</td>
                   <td>{item.quantidade_total}</td>
                   <td>R$ {item.valor_total.toFixed(2)}</td>
