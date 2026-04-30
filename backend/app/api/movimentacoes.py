@@ -1,6 +1,7 @@
 import csv
 import io
 import re
+import unicodedata
 from datetime import date, datetime
 from decimal import Decimal, InvalidOperation
 from fastapi import APIRouter, Depends, HTTPException, status, Query, UploadFile, File
@@ -166,33 +167,41 @@ def _limpar_quantidade(raw: str) -> int:
     return int(float(s))
 
 
+def _sem_acento(s: str) -> str:
+    """Minúsculas sem acentos para comparação insensível a codificação."""
+    return ''.join(
+        c for c in unicodedata.normalize('NFD', s.lower().strip())
+        if unicodedata.category(c) != 'Mn'
+    )
+
+
 def _mapear_colunas_historico(fieldnames: list[str]) -> dict:
     col_map = {k: None for k in (
         "data", "nf", "codigo_item", "grade", "titulo",
         "valor_unitario", "quantidade", "valor_total", "observacao",
     )}
     for col in fieldnames:
-        c = col.lower().strip()
+        c = _sem_acento(col)
         if c in ("data", "data entrada", "data de entrada"):
             col_map["data"] = col
-        elif c in ("nº nf", "n nf", "nf", "nota fiscal", "numero nf", "nº da nf",
-                   "num nf", "n. nf", "numero da nf", "nº nota", "n nota"):
+        elif c in ("n nf", "nf", "nota fiscal", "numero nf", "n da nf",
+                   "num nf", "n. nf", "numero da nf", "n nota", "no nf"):
             col_map["nf"] = col
-        elif c in ("código do item", "codigo do item", "código do ítem", "codigo do ítem",
-                   "código", "codigo", "item", "cód. item", "cod. item", "cód item", "cod item"):
+        elif c in ("codigo do item", "codigo do item", "codigo", "item",
+                   "cod. item", "cod item"):
             col_map["codigo_item"] = col
         elif c == "grade":
             col_map["grade"] = col
-        elif c in ("título", "titulo"):
+        elif c in ("titulo",):
             col_map["titulo"] = col
-        elif c in ("valor unitário", "valor unitario", "preço unitário", "preco unitario",
-                   "valor unit.", "vl. unit.", "vlr unitário", "vlr unitario", "preço unit."):
+        elif c in ("valor unitario", "preco unitario", "valor unit",
+                   "valor unit.", "vl. unit.", "vlr unitario", "preco unit.", "valor un."):
             col_map["valor_unitario"] = col
-        elif c in ("quantidade", "qtd", "qty"):
+        elif c in ("quantidade", "qtd", "qty", "qnt", "qtde"):
             col_map["quantidade"] = col
         elif c in ("valor total", "total", "vl. total", "vlr total", "valor tot."):
             col_map["valor_total"] = col
-        elif c in ("observação", "observacao", "obs", "obs.", "observações", "observacoes"):
+        elif c in ("observacao", "obs", "obs.", "observacoes"):
             col_map["observacao"] = col
     return col_map
 
