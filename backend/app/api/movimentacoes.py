@@ -184,8 +184,8 @@ def _mapear_colunas_historico(fieldnames: list[str]) -> dict:
         c = _sem_acento(col)
         if c in ("data", "data entrada", "data de entrada"):
             col_map["data"] = col
-        elif c in ("n nf", "nf", "nota fiscal", "numero nf", "n da nf",
-                   "num nf", "n. nf", "numero da nf", "n nota", "no nf"):
+        elif c in ("nº nf", "n nf", "nf", "nota fiscal", "numero nf", "n da nf",
+                   "num nf", "n. nf", "numero da nf", "n nota", "no nf", "nº nota"):
             col_map["nf"] = col
         elif c in ("codigo do item", "codigo do item", "codigo", "item",
                    "cod. item", "cod item"):

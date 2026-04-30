@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { livrosAPI, movimentacoesAPI, relatoriosAPI } from '../api/endpoints';
 import { getUserRole } from '../utils/auth';
-import { parseMoeda } from '../utils/moeda';
+import { parseMoeda, formatMoedaBR } from '../utils/moeda';
 import './Movimentacoes.css';
 
 export default function Movimentacoes() {
@@ -177,6 +177,8 @@ export default function Movimentacoes() {
   };
 
   // labels legíveis para os campos do mapeamento
+  const MOEDA_FIELDS = new Set(['valor_unitario', 'valor_total']);
+
   const FIELD_LABELS = {
     data: 'Data',
     nf: 'Nº NF',
@@ -306,7 +308,11 @@ export default function Movimentacoes() {
                               key={ci}
                               className={typeof val === 'string' && val.startsWith('Erro:') ? 'error-cell' : ''}
                             >
-                              {val === null || val === undefined ? '-' : String(val)}
+                              {val === null || val === undefined
+                                ? '-'
+                                : MOEDA_FIELDS.has(Object.keys(previewEntradas.mapped_preview[0])[ci]) && typeof val === 'number'
+                                  ? `R$ ${formatMoedaBR(val)}`
+                                  : String(val)}
                             </td>
                           ))}
                         </tr>
