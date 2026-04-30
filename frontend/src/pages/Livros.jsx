@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { livrosAPI, categoriasAPI } from '../api/endpoints';
 import { getUserRole } from '../utils/auth';
+import { parseMoeda, formatMoedaBR } from '../utils/moeda';
 import './Livros.css';
 
 const FORM_VAZIO = {
@@ -79,7 +80,7 @@ export default function Livros() {
       isbn: livro.isbn || '',
       descontinuado: livro.descontinuado || false,
       filial_id: livro.filial_id || '',
-      preco_custo: livro.preco_custo || '',
+      preco_custo: livro.preco_custo ? formatMoedaBR(livro.preco_custo) : '',
       estoque_minimo: livro.estoque_minimo || '',
       categoria_id: livro.categoria_id || '',
     });
@@ -113,7 +114,7 @@ export default function Livros() {
       isbn: form.isbn || null,
       descontinuado: form.descontinuado,
       filial_id: parseInt(form.filial_id),
-      preco_custo: form.preco_custo ? parseFloat(form.preco_custo) : 0,
+      preco_custo: parseMoeda(form.preco_custo),
       estoque_minimo: form.estoque_minimo ? parseInt(form.estoque_minimo) : 0,
       categoria_id: form.categoria_id ? parseInt(form.categoria_id) : null,
     };
@@ -473,7 +474,7 @@ export default function Livros() {
               <div className="form-row">
                 <div className="form-group">
                   <label>Preço de Custo</label>
-                  <input name="preco_custo" type="number" step="0.01" min="0" value={form.preco_custo} onChange={handleChange} />
+                  <input name="preco_custo" type="text" inputMode="decimal" placeholder="R$ 0,00" value={form.preco_custo} onChange={handleChange} />
                 </div>
                 <div className="form-group">
                   <label>Estoque Mínimo</label>

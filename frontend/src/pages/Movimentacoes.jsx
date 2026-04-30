@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { livrosAPI, movimentacoesAPI, relatoriosAPI } from '../api/endpoints';
 import { getUserRole } from '../utils/auth';
+import { parseMoeda } from '../utils/moeda';
 import './Movimentacoes.css';
 
 export default function Movimentacoes() {
@@ -89,7 +90,7 @@ export default function Movimentacoes() {
       } else {
         await movimentacoesAPI.registrarCompra(
           livroId, parseInt(quantidade),
-          parseFloat(precoUnitario), numeroLote, fornecedor
+          parseMoeda(precoUnitario), numeroLote, fornecedor
         );
         setMessage('Compra registrada com sucesso!');
       }
@@ -360,7 +361,7 @@ export default function Movimentacoes() {
               <>
                 <div className="form-group">
                   <label htmlFor="preco-unitario">Preço Unitário</label>
-                  <input id="preco-unitario" type="number" step="0.01" value={precoUnitario} onChange={(e) => setPrecoUnitario(e.target.value)} required />
+                  <input id="preco-unitario" type="text" inputMode="decimal" placeholder="R$ 0,00" value={precoUnitario} onChange={(e) => setPrecoUnitario(e.target.value)} required />
                 </div>
                 <div className="form-group">
                   <label htmlFor="numero-lote">Número do Lote</label>
