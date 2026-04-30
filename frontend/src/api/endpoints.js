@@ -34,6 +34,16 @@ export const movimentacoesAPI = {
       params: { livro_id, quantidade, preco_unitario, numero_lote, fornecedor },
     }),
   obterEstoque: (livro_id) => apiClient.get(`/movimentacoes/estoque/${livro_id}`),
+  templateHistoricoEntradas: () =>
+    apiClient.get('/movimentacoes/historico-entradas/template-csv', { responseType: 'blob' }),
+  previewHistoricoEntradas: (formData) =>
+    apiClient.post('/movimentacoes/historico-entradas/preview-csv', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    }),
+  importarHistoricoEntradas: (formData) =>
+    apiClient.post('/movimentacoes/historico-entradas/importar-csv', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    }),
 };
 
 export const relatoriosAPI = {

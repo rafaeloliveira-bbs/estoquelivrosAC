@@ -248,3 +248,205 @@
   border-radius: 6px;
   border-left: 3px solid #ef464b;
 }
+
+/* ── Cabeçalho da seção Registrar (tabs + botão CSV) ── */
+.registrar-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  margin-bottom: 0;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.registrar-header .tabs {
+  margin-bottom: 0;
+  border-bottom: none;
+  flex: 1;
+}
+
+/* ── Botões secundários ── */
+.btn-secondary {
+  background: #f0ebe8;
+  color: #554239;
+  border: none;
+  padding: 0.6rem 1.2rem;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  font-weight: 600;
+  transition: background 0.2s;
+  width: auto;
+}
+
+.btn-secondary:hover { background: #e0d4ce; }
+
+/* ── CSV dropdown ── */
+.csv-dropdown { position: relative; }
+
+.csv-menu {
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  background: white;
+  border: 1.5px solid #e0cfc9;
+  border-radius: 8px;
+  box-shadow: 0 4px 16px rgba(85, 66, 57, 0.12);
+  min-width: 180px;
+  z-index: 100;
+  overflow: hidden;
+}
+
+.csv-menu button {
+  display: block;
+  width: 100%;
+  padding: 0.6rem 1rem;
+  background: none;
+  border: none;
+  border-bottom: 1px solid #f5ede6;
+  text-align: left;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #554239;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.csv-menu button:last-child { border-bottom: none; }
+.csv-menu button:hover { background: #fdf3ea; }
+
+/* ── Alertas de erro / importação ── */
+.alert-error {
+  background: #fdecea;
+  color: #c0392b;
+  padding: 0.75rem 1rem;
+  border-radius: 6px;
+  margin-bottom: 1rem;
+  border-left: 3px solid #ef464b;
+}
+
+.import-result {
+  position: relative;
+  padding: 0.85rem 2.5rem 0.85rem 1rem;
+  border-radius: 6px;
+  margin-bottom: 1rem;
+  font-size: 0.9rem;
+}
+
+.import-result--ok  { background: #e3f5ea; color: #1e6b32; border-left: 3px solid #47b972; }
+.import-result--warn { background: #fff8ec; color: #6b4c00; border-left: 3px solid #f0a500; }
+
+.import-result ul { margin: 0.5rem 0 0 1rem; padding: 0; }
+
+.btn-close-result {
+  position: absolute;
+  top: 0.5rem;
+  right: 0.75rem;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 1rem;
+  color: inherit;
+  opacity: 0.6;
+  width: auto;
+  padding: 0;
+}
+
+.btn-close-result:hover { opacity: 1; }
+
+/* ── Preview CSV ── */
+.preview-section {
+  background: #f9f7f5;
+  border: 2px solid #e0cfc9;
+  border-radius: 12px;
+  padding: 1.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.preview-section h2 {
+  color: #554239;
+  margin-bottom: 1.5rem;
+  font-size: 1.25rem;
+}
+
+.warnings {
+  background: #fff3cd;
+  border: 1px solid #ffeaa7;
+  border-radius: 8px;
+  padding: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.warnings strong { color: #856404; display: block; margin-bottom: 0.4rem; }
+.warnings ul { margin: 0; padding-left: 1.5rem; }
+.warnings li { color: #856404; }
+
+.mapping-info { margin-bottom: 1.5rem; }
+.mapping-info h3 { color: #554239; margin-bottom: 1rem; }
+
+.mapping-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 0.6rem;
+}
+
+.mapping-item {
+  padding: 0.45rem 0.75rem;
+  border-radius: 6px;
+  font-size: 0.88rem;
+}
+
+.mapping-item.mapped   { background: #d4edda; border: 1px solid #c3e6cb; color: #155724; }
+.mapping-item.unmapped { background: #f8d7da; border: 1px solid #f5c6cb; color: #721c24; }
+
+.preview-table { margin-bottom: 1.5rem; overflow-x: auto; }
+.preview-table h3 { color: #554239; margin-bottom: 0.75rem; }
+
+.preview-table table {
+  width: 100%;
+  border-collapse: collapse;
+  background: white;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08);
+}
+
+.preview-table th,
+.preview-table td {
+  padding: 0.65rem 0.75rem;
+  text-align: left;
+  border-bottom: 1px solid #e0cfc9;
+  font-size: 0.88rem;
+  white-space: nowrap;
+}
+
+.preview-table th { background: #f5f0ed; font-weight: 700; color: #554239; }
+.preview-table td.error-cell { background: #f8d7da; color: #721c24; }
+
+.preview-actions {
+  display: flex;
+  gap: 1rem;
+  justify-content: center;
+}
+
+.preview-actions .btn-primary {
+  background: #e45e26;
+  color: white;
+  border: none;
+  padding: 0.75rem 2rem;
+  border-radius: 8px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s;
+  width: auto;
+}
+
+.preview-actions .btn-primary:hover:not(:disabled) { background: #c94b1b; }
+.preview-actions .btn-primary:disabled { opacity: 0.6; cursor: not-allowed; }
+
+.preview-actions .btn-secondary {
+  padding: 0.75rem 1.5rem;
+  border-radius: 8px;
+  font-size: 0.95rem;
+}
