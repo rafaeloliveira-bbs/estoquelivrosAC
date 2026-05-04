@@ -262,3 +262,38 @@
   color: #888;
   font-size: 0.95rem;
 }
+
+.filiais-checkboxes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  padding: 0.5rem 0;
+}
+
+.filial-checkbox-item {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.88rem;
+  font-weight: 500;
+  color: #4a3530;
+  cursor: pointer;
+  background: #f9f7f5;
+  border: 1.5px solid #e0cfc9;
+  border-radius: 6px;
+  padding: 0.3rem 0.7rem;
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.filial-checkbox-item:hover {
+  background: #f0ebe8;
+  border-color: #c9b8b0;
+}
+
+.filial-checkbox-item input[type="checkbox"] {
+  width: 15px;
+  height: 15px;
+  accent-color: #e45e26;
+  border: none;
+  padding: 0;
+}

@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { usuariosAPI } from '../api/endpoints';
+import { usuariosAPI, filiaisAPI } from '../api/endpoints';
 import './Usuarios.css';
 
 const ROLES = ['admin', 'gestor'];
@@ -14,6 +14,7 @@ export default function Usuarios() {
   const [modal, setModal] = useState(null);
   const [usuarioAtual, setUsuarioAtual] = useState(null);
   const [form, setForm] = useState(FORM_VAZIO);
+  const [selectedFilialIds, setSelectedFilialIds] = useState([]);
   const [erro, setErro] = useState('');
   const [sucesso, setSucesso] = useState('');
 
@@ -22,6 +23,27 @@ export default function Usuarios() {
     queryFn: () => usuariosAPI.listar().then((r) => r.data),
     staleTime: 30_000,
   });
+
+  const { data: todasFiliais = [] } = useQuery({
+    queryKey: ['filiais'],
+    queryFn: () => filiaisAPI.listar().then((r) => r.data),
+    staleTime: 10 * 60_000,
+  });
+
+  const { data: filiaisDoUsuario = [] } = useQuery({
+    queryKey: ['usuario-filiais', usuarioAtual?.id],
+    queryFn: () => usuariosAPI.listarFiliais(usuarioAtual.id).then((r) => r.data),
+    enabled: !!usuarioAtual?.id,
+  });
+
+  useEffect(() => {
+    if (filiaisDoUsuario.length > 0) setSelectedFilialIds(filiaisDoUsuario);
+  }, [filiaisDoUsuario]);
+
+  const toggleFilial = (id) =>
+    setSelectedFilialIds((prev) =>
+      prev.includes(id) ? prev.filter((f) => f !== id) : [...prev, id]
+    );
 
   const invalidar = () => queryClient.invalidateQueries({ queryKey: ['usuarios'] });
 
@@ -49,6 +71,7 @@ export default function Usuarios() {
     setModal(null);
     setUsuarioAtual(null);
     setForm(FORM_VAZIO);
+    setSelectedFilialIds([]);
     setErro('');
   };
 
@@ -62,28 +85,21 @@ export default function Usuarios() {
     setErro('');
     try {
       if (modal === 'criar') {
-        const payload = {
-          nome: form.nome,
-          email: form.email,
-          senha: form.senha,
-          role: form.role,
-        };
+        const payload = { nome: form.nome, email: form.email, senha: form.senha, role: form.role };
         await usuariosAPI.criar(payload);
         setSucesso('Usuário criado com sucesso!');
       } else {
-        const payload = {
-          nome: form.nome,
-          email: form.email,
-          role: form.role,
-          ativo: form.ativo,
-        };
+        const payload = { nome: form.nome, email: form.email, role: form.role, ativo: form.ativo };
         if (form.senha) payload.senha = form.senha;
         await usuariosAPI.atualizar(usuarioAtual.id, payload);
-        setSucesso('Usuário atualizado com sucesso!');
+        if (selectedFilialIds.length > 0) {
+          await usuariosAPI.atualizarFiliais(usuarioAtual.id, selectedFilialIds);
+        }
+        setSucesso('Usuário atualizado! Se as filiais mudaram, o usuário precisa fazer login novamente.');
       }
       fecharModal();
       invalidar();
-      setTimeout(() => setSucesso(''), 3000);
+      setTimeout(() => setSucesso(''), 5000);
     } catch (err) {
       setErro(err.response?.data?.detail || 'Erro ao salvar usuário');
     }
@@ -219,16 +235,36 @@ export default function Usuarios() {
 
 
               {modal === 'editar' && (
-                <div className="form-group form-group--inline">
-                  <input
-                    id="ativo"
-                    name="ativo"
-                    type="checkbox"
-                    checked={form.ativo}
-                    onChange={handleChange}
-                  />
-                  <label htmlFor="ativo">Usuário ativo</label>
-                </div>
+                <>
+                  <div className="form-group form-group--inline">
+                    <input
+                      id="ativo"
+                      name="ativo"
+                      type="checkbox"
+                      checked={form.ativo}
+                      onChange={handleChange}
+                    />
+                    <label htmlFor="ativo">Usuário ativo</label>
+                  </div>
+
+                  {todasFiliais.length > 1 && (
+                    <div className="form-group">
+                      <label>Filiais com acesso</label>
+                      <div className="filiais-checkboxes">
+                        {todasFiliais.map((f) => (
+                          <label key={f.id} className="filial-checkbox-item">
+                            <input
+                              type="checkbox"
+                              checked={selectedFilialIds.includes(f.id)}
+                              onChange={() => toggleFilial(f.id)}
+                            />
+                            {f.nome}
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </>
               )}
 
               <div className="modal-actions">

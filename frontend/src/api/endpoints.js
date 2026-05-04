@@ -76,6 +76,8 @@ export const usuariosAPI = {
   criar: (usuario) => apiClient.post('/usuarios/', usuario),
   atualizar: (id, usuario) => apiClient.put(`/usuarios/${id}`, usuario),
   deletar: (id) => apiClient.delete(`/usuarios/${id}`),
+  listarFiliais: (id) => apiClient.get(`/usuarios/${id}/filiais`),
+  atualizarFiliais: (id, filial_ids) => apiClient.put(`/usuarios/${id}/filiais`, { filial_ids }),
 };
 
 export const categoriasAPI = {

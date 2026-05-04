@@ -566,6 +566,31 @@
 }
 
 /* Filtro de filial */
+/* Ordenação de colunas */
+.th-sortable {
+  cursor: pointer;
+  user-select: none;
+  white-space: nowrap;
+}
+
+.th-sortable:hover {
+  background: #f5e8dc;
+}
+
+.sort-icon {
+  margin-left: 4px;
+  font-size: 0.7rem;
+}
+
+.sort-icon--idle {
+  color: #c9b8b0;
+}
+
+.sort-icon--active {
+  color: #e45e26;
+}
+
+/* Filtro de filial */
 .filial-filter {
   display: flex;
   align-items: center;

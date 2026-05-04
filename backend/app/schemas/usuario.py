@@ -40,3 +40,6 @@ class TokenResposta(BaseModel):
 
 class RefreshRequest(BaseModel):
     token: str
+
+class UsuarioFiliaisAtualizar(BaseModel):
+    filial_ids: list[int]

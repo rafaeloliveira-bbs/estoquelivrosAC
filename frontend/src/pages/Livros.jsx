@@ -18,6 +18,8 @@ export default function Livros() {
   const [busca, setBusca] = useState('');
   const [buscaDebounced, setBuscaDebounced] = useState('');
   const [filialFiltro, setFilialFiltro] = useState(null);
+  const [sortColuna, setSortColuna] = useState(null);
+  const [sortDir, setSortDir] = useState('asc');
   const [modal, setModal] = useState(null);
   const [livroAtual, setLivroAtual] = useState(null);
   const [form, setForm] = useState(FORM_VAZIO);
@@ -233,6 +235,31 @@ export default function Livros() {
     }
   };
 
+  const handleOrdenar = (coluna) => {
+    if (sortColuna === coluna) {
+      setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'));
+    } else {
+      setSortColuna(coluna);
+      setSortDir('asc');
+    }
+  };
+
+  const livrosOrdenados = sortColuna
+    ? [...livros].sort((a, b) => {
+        const va = a[sortColuna] ?? '';
+        const vb = b[sortColuna] ?? '';
+        const cmp = typeof va === 'number' && typeof vb === 'number'
+          ? va - vb
+          : String(va).localeCompare(String(vb), 'pt-BR', { sensitivity: 'base' });
+        return sortDir === 'asc' ? cmp : -cmp;
+      })
+    : livros;
+
+  const SortIcon = ({ coluna }) => {
+    if (sortColuna !== coluna) return <span className="sort-icon sort-icon--idle">⇅</span>;
+    return <span className="sort-icon sort-icon--active">{sortDir === 'asc' ? '▲' : '▼'}</span>;
+  };
+
   const handleCancelarPreview = () => {
     setPreview(null);
     setSelectedFile(null);
@@ -414,25 +441,31 @@ export default function Livros() {
           <table className="data-table">
             <thead>
               <tr>
-                <th>Item</th>
-                <th>Títulos</th>
-                <th>Fornecedor</th>
-                <th>Editora</th>
-                <th>Classificação</th>
-                <th>Tipo do material</th>
-                <th>Grade</th>
-                <th>ISBN 13</th>
-                <th>Descontinuado?</th>
-                <th>Estoque</th>
-                <th>Status</th>
+                {[
+                  ['codigo_item', 'Item'],
+                  ['titulo', 'Títulos'],
+                  ['fornecedor', 'Fornecedor'],
+                  ['editora', 'Editora'],
+                  ['classificacao', 'Classificação'],
+                  ['tipo_material', 'Tipo do material'],
+                  ['grade', 'Grade'],
+                  ['isbn', 'ISBN 13'],
+                  ['descontinuado', 'Descontinuado?'],
+                  ['estoque_total', 'Estoque'],
+                  ['status', 'Status'],
+                ].map(([col, label]) => (
+                  <th key={col} className="th-sortable" onClick={() => handleOrdenar(col)}>
+                    {label} <SortIcon coluna={col} />
+                  </th>
+                ))}
                 <th>Ações</th>
               </tr>
             </thead>
             <tbody>
-              {livros.length === 0 ? (
+              {livrosOrdenados.length === 0 ? (
                 <tr><td colSpan="12" className="empty">Nenhum livro encontrado</td></tr>
               ) : (
-                livros.map((l) => (
+                livrosOrdenados.map((l) => (
                   <tr key={l.id}>
                     <td>{l.codigo_item || '-'}</td>
                     <td>{l.titulo}</td>

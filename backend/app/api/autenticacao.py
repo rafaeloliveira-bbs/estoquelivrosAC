@@ -40,10 +40,17 @@ async def _autenticar_usuario(email: str, senha: str, db: Session) -> dict:
         )
 
     # Carrega todas as filiais vinculadas ao usuário
-    filial_ids = [
-        uf.filial_id
-        for uf in db.query(UsuarioFilial).filter(UsuarioFilial.usuario_id == usuario.id).all()
-    ] or [usuario.filial_id]
+    registros = db.query(UsuarioFilial).filter(UsuarioFilial.usuario_id == usuario.id).all()
+    if not registros:
+        # Primeira vez: semente a filial primária para manter o dado consistente
+        try:
+            db.add(UsuarioFilial(usuario_id=usuario.id, filial_id=usuario.filial_id))
+            db.commit()
+        except Exception:
+            db.rollback()
+        filial_ids = [usuario.filial_id]
+    else:
+        filial_ids = [uf.filial_id for uf in registros]
 
     # Tokens gerados antes de qualquer escrita opcional no banco
     access_token, expires_in = create_access_token(

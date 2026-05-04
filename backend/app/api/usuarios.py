@@ -1,11 +1,12 @@
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session
 from app.database import get_db
-from app.schemas.usuario import UsuarioCriar, UsuarioAtualizar, UsuarioResposta
+from app.schemas.usuario import UsuarioCriar, UsuarioAtualizar, UsuarioResposta, UsuarioFiliaisAtualizar
 from app.crud.usuario import (
     criar_usuario, obter_usuario_por_id, listar_usuarios,
     atualizar_usuario, deletar_usuario
 )
+from app.models.usuario_filial import UsuarioFilial
 from app.auth.permissions import get_current_user, requer_admin
 from app.config import logger
 
@@ -74,6 +75,38 @@ async def atualizar(
     
     logger.info(f"Usuário atualizado: {usuario_id}")
     return usuario_atualizado
+
+@router.get("/{usuario_id}/filiais")
+async def listar_filiais_usuario(
+    usuario_id: int,
+    db: Session = Depends(get_db),
+    user=Depends(requer_admin()),
+):
+    """Retorna os IDs de filiais vinculados ao usuário."""
+    registros = db.query(UsuarioFilial).filter(UsuarioFilial.usuario_id == usuario_id).all()
+    return [r.filial_id for r in registros]
+
+
+@router.put("/{usuario_id}/filiais")
+async def atualizar_filiais_usuario(
+    usuario_id: int,
+    body: UsuarioFiliaisAtualizar,
+    db: Session = Depends(get_db),
+    user=Depends(requer_admin()),
+):
+    """Substitui as filiais vinculadas ao usuário."""
+    usuario = obter_usuario_por_id(db, usuario_id)
+    if not usuario:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Usuário não encontrado")
+    if not body.filial_ids:
+        raise HTTPException(status_code=400, detail="O usuário precisa ter ao menos uma filial")
+    db.query(UsuarioFilial).filter(UsuarioFilial.usuario_id == usuario_id).delete()
+    for fid in body.filial_ids:
+        db.add(UsuarioFilial(usuario_id=usuario_id, filial_id=fid))
+    db.commit()
+    logger.info(f"Filiais do usuário {usuario_id} atualizadas: {body.filial_ids}")
+    return {"filial_ids": body.filial_ids}
+
 
 @router.delete("/{usuario_id}")
 async def deletar(
