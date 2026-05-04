@@ -61,7 +61,8 @@ def relatorio_movimentacoes(
     db: Session,
     filial_id: int,
     data_inicio: date | None,
-    data_fim: date
+    data_fim: date,
+    tipo: str | None = None,
 ) -> list:
     filters = [
         Movimentacao.filial_id == filial_id,
@@ -69,6 +70,8 @@ def relatorio_movimentacoes(
     ]
     if data_inicio:
         filters.append(Movimentacao.data_movimento >= data_inicio)
+    if tipo:
+        filters.append(Movimentacao.tipo == tipo.lower())
 
     movs = (
         db.query(Movimentacao)
@@ -204,3 +207,101 @@ def relatorio_lotes_vencimento(
             "urgencia": "CRITICO" if dias_restantes <= 7 else "AVISO" if dias_restantes <= 14 else "INFO",
         })
     return result
+
+
+def relatorio_evolucao_estoque(db: Session, filial_id: int) -> dict:
+    from calendar import monthrange
+    from collections import defaultdict
+
+    # Gera lista de meses de dez/2024 até o mês atual
+    start = date(2024, 12, 1)
+    today = date.today()
+    current = date(today.year, today.month, 1)
+
+    months: list[date] = []
+    m = start
+    while m <= current:
+        months.append(m)
+        m = (m.replace(day=28) + relativedelta(months=1)).replace(day=1)
+
+    # Todos os livros da filial, ordenados por código e título
+    livros = (
+        db.query(Livro)
+        .filter(Livro.filial_id == filial_id)
+        .order_by(Livro.codigo_item, Livro.titulo)
+        .all()
+    )
+
+    # Todos os movimentos da filial com livro_id via join no lote
+    all_movs = (
+        db.query(
+            Movimentacao.tipo,
+            Movimentacao.quantidade,
+            Movimentacao.preco_unitario,
+            Movimentacao.data_movimento,
+            Lote.livro_id,
+        )
+        .join(Lote, Movimentacao.lote_id == Lote.id)
+        .filter(Movimentacao.filial_id == filial_id)
+        .order_by(Movimentacao.data_movimento)
+        .all()
+    )
+
+    movs_by_livro: dict[int, list] = defaultdict(list)
+    for mov in all_movs:
+        movs_by_livro[mov.livro_id].append(mov)
+
+    itens = []
+    for livro in livros:
+        movs = movs_by_livro.get(livro.id, [])
+        if not movs:
+            continue  # ignora livros sem nenhuma movimentação
+
+        running_qty = 0
+        running_compra_qty = 0
+        running_compra_valor = 0.0
+        mov_idx = 0
+        meses_data: dict[str, dict] = {}
+
+        for month in months:
+            last_day = monthrange(month.year, month.month)[1]
+            month_end = datetime(month.year, month.month, last_day, 23, 59, 59)
+
+            while mov_idx < len(movs):
+                dm = movs[mov_idx].data_movimento
+                if dm <= month_end:
+                    mv = movs[mov_idx]
+                    if mv.tipo in ('compra', 'devolucao'):
+                        running_qty += mv.quantidade
+                        if mv.tipo == 'compra':
+                            running_compra_qty += mv.quantidade
+                            running_compra_valor += float(mv.preco_unitario) * mv.quantidade
+                    elif mv.tipo in ('venda', 'emprestimo'):
+                        running_qty -= mv.quantidade
+                    mov_idx += 1
+                else:
+                    break
+
+            preco_medio = (
+                running_compra_valor / running_compra_qty
+                if running_compra_qty > 0
+                else float(livro.preco_custo or 0)
+            )
+            qty = max(0, running_qty)
+            key = f"{month.year}-{month.month:02d}"
+            meses_data[key] = {
+                "quantidade": qty,
+                "valor_total": round(qty * preco_medio, 2),
+            }
+
+        itens.append({
+            "codigo_item": livro.codigo_item,
+            "grade": livro.grade or "",
+            "titulo": livro.titulo,
+            "meses": meses_data,
+        })
+
+    return {
+        "meses": [f"{m.year}-{m.month:02d}" for m in months],
+        "itens": itens,
+    }

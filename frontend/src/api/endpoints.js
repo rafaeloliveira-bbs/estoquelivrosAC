@@ -62,11 +62,12 @@ export const movimentacoesAPI = {
 export const relatoriosAPI = {
   estoqueAtual: () => apiClient.get('/relatorios/estoque-atual'),
   alertasMinimo: () => apiClient.get('/relatorios/alertas-minimo'),
-  movimentacoes: (data_inicio, data_fim) =>
-    apiClient.get('/relatorios/movimentacoes', { params: { data_inicio, data_fim } }),
+  movimentacoes: (data_inicio, data_fim, tipo, filial_id) =>
+    apiClient.get('/relatorios/movimentacoes', { params: { data_inicio, data_fim, tipo, filial_id } }),
   topVendas: (limite = 10, mes, ano) =>
     apiClient.get('/relatorios/top-vendas', { params: { limite, mes, ano } }),
   lotesVencimento: (dias = 30) => apiClient.get('/relatorios/lotes-vencimento', { params: { dias_proximos: dias } }),
+  evolucaoEstoque: () => apiClient.get('/relatorios/evolucao-estoque'),
 };
 
 export const usuariosAPI = {

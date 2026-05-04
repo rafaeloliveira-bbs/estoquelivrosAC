@@ -194,7 +194,8 @@
   letter-spacing: 0.03em;
 }
 
-.form-group input {
+.form-group input,
+.form-group select {
   padding: 0.7rem 0.75rem;
   border: 1.5px solid #e0cfc9;
   border-radius: 6px;
@@ -203,7 +204,8 @@
   transition: border-color 0.2s, box-shadow 0.2s;
 }
 
-.form-group input:focus {
+.form-group input:focus,
+.form-group select:focus {
   outline: none;
   border-color: #f68c3d;
   box-shadow: 0 0 0 3px rgba(246, 140, 61, 0.12);

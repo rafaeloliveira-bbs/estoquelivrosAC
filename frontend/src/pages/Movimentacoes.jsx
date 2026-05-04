@@ -56,6 +56,8 @@ export default function Movimentacoes() {
   const [historico, setHistorico] = useState([]);
   const [dataInicio, setDataInicio] = useState('');
   const [dataFim, setDataFim] = useState('');
+  const [tipoHistorico, setTipoHistorico] = useState('');
+  const [filialHistorico, setFilialHistorico] = useState('');
   const [loadingHistorico, setLoadingHistorico] = useState(false);
 
   // ── CSV import – Entradas ────────────────────────────────────────────────────
@@ -104,7 +106,12 @@ export default function Movimentacoes() {
   const carregarHistorico = async () => {
     setLoadingHistorico(true);
     try {
-      const res = await relatoriosAPI.movimentacoes(dataInicio || undefined, dataFim || undefined);
+      const res = await relatoriosAPI.movimentacoes(
+        dataInicio || undefined,
+        dataFim || undefined,
+        tipoHistorico || undefined,
+        filialHistorico || undefined,
+      );
       setHistorico(res.data.movimentacoes || []);
     } catch {
       setHistorico([]);
@@ -723,6 +730,28 @@ export default function Movimentacoes() {
               <label>Data fim</label>
               <input type="date" value={dataFim} onChange={(e) => setDataFim(e.target.value)} />
             </div>
+            <div className="form-group">
+              <label>Tipo</label>
+              <select value={tipoHistorico} onChange={(e) => setTipoHistorico(e.target.value)}>
+                <option value="">Todos</option>
+                <option value="compra">Compra</option>
+                <option value="venda">Venda</option>
+                <option value="devolucao">Devolução</option>
+                <option value="ajuste">Ajuste</option>
+                <option value="emprestimo">Empréstimo</option>
+              </select>
+            </div>
+            {isAdmin && (
+              <div className="form-group">
+                <label>Filial</label>
+                <select value={filialHistorico} onChange={(e) => setFilialHistorico(e.target.value)}>
+                  <option value="">Todas</option>
+                  {filiais.map((f) => (
+                    <option key={f.id} value={f.id}>{f.nome}</option>
+                  ))}
+                </select>
+              </div>
+            )}
             <button className="submit-btn" style={{ alignSelf: 'flex-end', padding: '0.6rem 1.2rem' }} onClick={carregarHistorico}>
               Filtrar
             </button>

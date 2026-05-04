@@ -1,140 +1,160 @@
 .relatorios-page {
   padding: 2rem;
-  max-width: 1200px;
-  margin: 0 auto;
+  min-width: 0;
 }
 
-.relatorios-page h1 {
-  font-size: 1.75rem;
-  color: #554239;
-  margin-bottom: 1.5rem;
-}
-
-.abas {
+/* ── Cabeçalho ────────────────────────────────────────────────────────────── */
+.evolucao-header {
   display: flex;
-  gap: 0;
-  border-bottom: 2px solid #f5ede6;
-  margin-bottom: 1.5rem;
-}
-
-.aba {
-  padding: 0.65rem 1.2rem;
-  border: none;
-  background: none;
-  cursor: pointer;
-  font-size: 0.92rem;
-  color: #b08880;
-  border-bottom: 2px solid transparent;
-  margin-bottom: -2px;
-  transition: color 0.2s, border-color 0.2s;
-  font-weight: 600;
-  width: auto;
-}
-
-.aba:hover { color: #f68c3d; }
-
-.aba.ativa {
-  color: #e45e26;
-  border-bottom-color: #e45e26;
-}
-
-.filtros {
-  display: flex;
-  align-items: flex-end;
-  gap: 1rem;
-  margin-bottom: 1.5rem;
+  align-items: center;
+  gap: 1.5rem;
+  margin-bottom: 0.75rem;
   flex-wrap: wrap;
 }
 
-.filtro-grupo {
-  display: flex;
-  flex-direction: column;
-  gap: 0.35rem;
-}
-
-.filtro-grupo label {
-  font-size: 0.8rem;
-  font-weight: 700;
+.relatorios-page h1 {
+  font-size: 1.6rem;
   color: #554239;
-  text-transform: uppercase;
-  letter-spacing: 0.03em;
+  margin: 0;
+  white-space: nowrap;
 }
 
-.filtro-grupo input,
-.filtro-grupo select {
-  padding: 0.55rem 0.75rem;
+.evolucao-busca {
+  flex: 1;
+  max-width: 340px;
+  padding: 0.55rem 0.85rem;
   border: 1.5px solid #e0cfc9;
   border-radius: 6px;
-  font-size: 0.9rem;
+  font-size: 0.92rem;
   background: white;
   transition: border-color 0.2s, box-shadow 0.2s;
 }
 
-.filtro-grupo input:focus,
-.filtro-grupo select:focus {
+.evolucao-busca:focus {
   outline: none;
   border-color: #f68c3d;
   box-shadow: 0 0 0 3px rgba(246, 140, 61, 0.12);
 }
 
-.btn-filtrar {
-  background: #e45e26;
-  color: white;
-  border: none;
-  padding: 0.55rem 1.2rem;
-  border-radius: 6px;
-  cursor: pointer;
-  font-size: 0.9rem;
-  font-weight: 700;
-  transition: background 0.2s;
-  width: auto;
+.evolucao-info {
+  font-size: 0.82rem;
+  color: #b08880;
+  margin-bottom: 0.75rem;
 }
 
-.btn-filtrar:hover { background: #c94b1b; }
+/* ── Container da tabela ──────────────────────────────────────────────────── */
+.evolucao-wrapper {
+  overflow-x: auto;
+  border-radius: 8px;
+  box-shadow: 0 2px 12px rgba(85, 66, 57, 0.09);
+  border: 1px solid #ecddd7;
+}
 
-.data-table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 0.9rem;
+/* ── Tabela ───────────────────────────────────────────────────────────────── */
+.evolucao-table {
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: 0.82rem;
+  white-space: nowrap;
+  min-width: 100%;
   background: white;
-  border-radius: 10px;
-  box-shadow: 0 2px 10px rgba(85, 66, 57, 0.08);
-  overflow: hidden;
 }
 
-.data-table th {
+/* ── Colunas fixas (sticky) ───────────────────────────────────────────────── */
+.evolucao-table .col-sticky {
+  position: sticky;
+  z-index: 2;
+  background: white;
+}
+
+.evolucao-table thead .col-sticky {
   background: #fdf3ea;
-  padding: 0.85rem 1rem;
-  text-align: left;
+  z-index: 4;
+}
+
+.col-codigo { left: 0;     min-width: 72px;  max-width: 72px;  }
+.col-grade  { left: 72px;  min-width: 88px;  max-width: 88px;  }
+.col-titulo { left: 160px; min-width: 240px; max-width: 240px; white-space: normal; }
+
+/* separador visual após o título */
+.evolucao-table .col-titulo {
+  border-right: 2px solid #d9c4bc !important;
+}
+
+/* ── Cabeçalho: linha de meses ─────────────────────────────────────────────── */
+.evolucao-table thead th {
+  position: sticky;
+  top: 0;
+  background: #fdf3ea;
+  padding: 0.5rem 0.6rem;
+  text-align: center;
   font-weight: 700;
   color: #554239;
-  border-bottom: 2px solid #f5ede6;
-  font-size: 0.8rem;
+  font-size: 0.72rem;
   text-transform: uppercase;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.05em;
+  border-bottom: 1px solid #ecddd7;
+  border-right: 1px solid #ecddd7;
 }
 
-.data-table td {
-  padding: 0.75rem 1rem;
+.evolucao-table thead .col-sticky {
+  text-align: left;
+}
+
+/* linha de meses: realce de fundo */
+.tr-mes th {
+  background: #fdf3ea;
+}
+
+/* linha de sub-colunas (Qtd / Valor) */
+.tr-sub .col-sub {
+  background: #faf0e9;
+  font-size: 0.68rem !important;
+  color: #a07060 !important;
+  font-weight: 600 !important;
+  text-transform: none !important;
+  letter-spacing: 0 !important;
+  padding: 0.3rem 0.5rem;
+}
+
+/* larguras das sub-colunas */
+.col-qty { min-width: 54px;  width: 54px;  }
+.col-val { min-width: 108px; width: 108px; }
+
+/* ── Células do corpo ─────────────────────────────────────────────────────── */
+.evolucao-table tbody td {
+  padding: 0.42rem 0.6rem;
   border-bottom: 1px solid #f5ede6;
-  color: #4a3530;
+  border-right: 1px solid #f5ede6;
+  color: #3d2c27;
+  vertical-align: middle;
 }
 
-.data-table tr:last-child td { border-bottom: none; }
-.data-table tr:hover td { background: #fdf8f4; }
-
-.badge {
-  padding: 0.2rem 0.65rem;
-  border-radius: 12px;
-  font-size: 0.78rem;
-  font-weight: 700;
+.evolucao-table tbody td.col-qty {
+  text-align: center;
+  font-variant-numeric: tabular-nums;
 }
 
-.badge-green  { background: #e3f5ea; color: #1e6b32; }
-.badge-red    { background: #fdecea; color: #c0392b; }
-.badge-yellow { background: #fff8ec; color: #856404; }
-.badge-teal   { background: #e0f5f6; color: #00737d; }
+.evolucao-table tbody td.col-val {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
 
+/* células com valor zero */
+.cell-zero {
+  color: #cdb8b0;
+}
+
+/* hover na linha */
+.evolucao-table tbody tr:hover td {
+  background: #fdf8f5;
+}
+
+.evolucao-table tbody tr:hover .col-sticky {
+  background: #fdf8f5;
+}
+
+/* ── Utilitários ──────────────────────────────────────────────────────────── */
 .loading {
   text-align: center;
   padding: 3rem;

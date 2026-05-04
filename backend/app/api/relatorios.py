@@ -7,7 +7,8 @@ from app.services.relatorios import (
     relatorio_movimentacoes,
     relatorio_top_vendas,
     relatorio_alertas_minimo,
-    relatorio_lotes_vencimento
+    relatorio_lotes_vencimento,
+    relatorio_evolucao_estoque,
 )
 from app.auth.permissions import get_current_user
 from app.config import logger
@@ -34,19 +35,24 @@ async def estoque_atual(
 async def movimentacoes(
     data_inicio: date = Query(None),
     data_fim: date = Query(None),
+    tipo: str = Query(None),
+    filial_id: int = Query(None),
     db: Session = Depends(get_db),
     user = Depends(get_current_user)
 ):
     """Get movement report"""
     if not data_fim:
         data_fim = date.today()
-    
-    relatorio = relatorio_movimentacoes(db, user["filial_id"], data_inicio, data_fim)
+
+    is_privileged = user["role"] in ("admin", "gestor")
+    effective_filial_id = filial_id if (is_privileged and filial_id) else user["filial_id"]
+
+    relatorio = relatorio_movimentacoes(db, effective_filial_id, data_inicio, data_fim, tipo)
     logger.info(f"Relatório de movimentações gerado: {len(relatorio)} registros")
-    
+
     return {
-        "filial_id": user["filial_id"],
-        "periodo": f"{data_inicio.isoformat()} a {data_fim.isoformat()}",
+        "filial_id": effective_filial_id,
+        "periodo": f"{data_inicio.isoformat() if data_inicio else 'início'} a {data_fim.isoformat()}",
         "total_movimentacoes": len(relatorio),
         "movimentacoes": relatorio
     }
@@ -85,6 +91,17 @@ async def alertas_minimo(
         "total_alertas": len(relatorio),
         "alertas": relatorio
     }
+
+@router.get("/evolucao-estoque")
+async def evolucao_estoque(
+    db: Session = Depends(get_db),
+    user = Depends(get_current_user)
+):
+    """Stock evolution month by month since Dec 2024"""
+    dados = relatorio_evolucao_estoque(db, user["filial_id"])
+    logger.info(f"Evolução de estoque gerada: {len(dados['itens'])} itens, {len(dados['meses'])} meses")
+    return dados
+
 
 @router.get("/lotes-vencimento")
 async def lotes_vencimento(
