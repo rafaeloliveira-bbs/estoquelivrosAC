@@ -21,7 +21,7 @@ async def estoque_atual(
     user = Depends(get_current_user)
 ):
     """Get current stock report"""
-    relatorio = relatorio_estoque_atual(db, user["filial_id"])
+    relatorio = relatorio_estoque_atual(db, user["filial_ids"])
     logger.info(f"Relatório de estoque gerado: {len(relatorio)} itens")
     return {
         "filial_id": user["filial_id"],
@@ -45,7 +45,7 @@ async def movimentacoes(
         data_fim = date.today()
 
     is_privileged = user["role"] in ("admin", "gestor")
-    effective_filial_id = filial_id if (is_privileged and filial_id) else user["filial_id"]
+    effective_filial_id = filial_id if (is_privileged and filial_id) else user["filial_ids"]
 
     relatorio = relatorio_movimentacoes(db, effective_filial_id, data_inicio, data_fim, tipo)
     logger.info(f"Relatório de movimentações gerado: {len(relatorio)} registros")
@@ -66,9 +66,9 @@ async def top_vendas(
     user = Depends(get_current_user)
 ):
     """Get top selling books report"""
-    relatorio = relatorio_top_vendas(db, user["filial_id"], limite, mes, ano)
+    relatorio = relatorio_top_vendas(db, user["filial_ids"], limite, mes, ano)
     logger.info(f"Relatório de top vendas gerado: {len(relatorio)} itens")
-    
+
     return {
         "filial_id": user["filial_id"],
         "periodo": f"Mês: {mes}, Ano: {ano}" if mes or ano else "Todos os períodos",
@@ -82,9 +82,9 @@ async def alertas_minimo(
     user = Depends(get_current_user)
 ):
     """Get minimum stock alerts"""
-    relatorio = relatorio_alertas_minimo(db, user["filial_id"])
+    relatorio = relatorio_alertas_minimo(db, user["filial_ids"])
     logger.info(f"Relatório de alertas de mínimo gerado: {len(relatorio)} itens")
-    
+
     return {
         "filial_id": user["filial_id"],
         "data_geracao": date.today().isoformat(),
@@ -100,7 +100,7 @@ async def evolucao_estoque(
 ):
     """Stock evolution month by month since Dec 2024"""
     is_privileged = user["role"] in ("admin", "gestor")
-    effective_filial_id = filial_id if (is_privileged and filial_id) else user["filial_id"]
+    effective_filial_id = filial_id if (is_privileged and filial_id) else user["filial_ids"]
     dados = relatorio_evolucao_estoque(db, effective_filial_id)
     logger.info(f"Evolução de estoque gerada: filial={effective_filial_id}, {len(dados['itens'])} itens")
     return dados
@@ -113,9 +113,9 @@ async def lotes_vencimento(
     user = Depends(get_current_user)
 ):
     """Get expiring batches report"""
-    relatorio = relatorio_lotes_vencimento(db, user["filial_id"], dias_proximos)
+    relatorio = relatorio_lotes_vencimento(db, user["filial_ids"], dias_proximos)
     logger.info(f"Relatório de lotes com vencimento gerado: {len(relatorio)} itens")
-    
+
     return {
         "filial_id": user["filial_id"],
         "dias_proximos": dias_proximos,

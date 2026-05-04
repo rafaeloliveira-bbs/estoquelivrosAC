@@ -409,7 +409,7 @@ async def listar_com_estoque(
     db: Session = Depends(get_db),
     user=Depends(get_current_user),
 ):
-    return listar_livros_com_estoque(db, filial_id=user["filial_id"], termo=termo or None, skip=skip, limit=limit)
+    return listar_livros_com_estoque(db, filial_id=user["filial_ids"], termo=termo or None, skip=skip, limit=limit)
 
 
 @router.get("/por-codigo/{codigo_item}", response_model=LivroResposta)
@@ -418,7 +418,7 @@ async def obter_por_codigo(
     db: Session = Depends(get_db),
     user=Depends(get_current_user),
 ):
-    livro = obter_livro_por_codigo(db, codigo_item, user["filial_id"])
+    livro = obter_livro_por_codigo(db, codigo_item, user["filial_ids"])
     if not livro:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Item não encontrado")
     return livro
@@ -431,7 +431,7 @@ async def obter(
     user=Depends(get_current_user),
 ):
     livro = obter_livro_por_id(db, livro_id)
-    if not livro or livro.filial_id != user["filial_id"]:
+    if not livro or livro.filial_id not in user["filial_ids"]:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Livro não encontrado")
     return livro
 
@@ -444,7 +444,7 @@ async def atualizar(
     user=Depends(requer_role(["gestor", "admin"])),
 ):
     livro = obter_livro_por_id(db, livro_id)
-    if not livro or livro.filial_id != user["filial_id"]:
+    if not livro or livro.filial_id not in user["filial_ids"]:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Livro não encontrado")
     atualizado = atualizar_livro(db, livro_id, livro_data)
     logger.info(f"Livro atualizado: {livro_id}")
@@ -458,7 +458,7 @@ async def deletar(
     user=Depends(requer_role(["admin"])),
 ):
     livro = obter_livro_por_id(db, livro_id)
-    if not livro or livro.filial_id != user["filial_id"]:
+    if not livro or livro.filial_id not in user["filial_ids"]:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Livro não encontrado")
     deletar_livro(db, livro_id)
     logger.info(f"Livro deletado: {livro_id}")

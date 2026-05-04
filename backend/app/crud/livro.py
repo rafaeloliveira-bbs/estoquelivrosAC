@@ -24,10 +24,10 @@ def _filial_clause(model, filial_id):
     return model.filial_id == filial_id
 
 
-def obter_livro_por_codigo(db: Session, codigo_item: int, filial_id: int):
+def obter_livro_por_codigo(db: Session, codigo_item: int, filial_id):
     return db.query(Livro).filter(
         Livro.codigo_item == codigo_item,
-        Livro.filial_id == filial_id
+        _filial_clause(Livro, filial_id)
     ).first()
 
 def listar_livros(db: Session, filial_id=None, skip: int = 0, limit: int = 100):

@@ -32,7 +32,7 @@ async def registrar_venda_endpoint(
     """Register a sale using FIFO method"""
     try:
         livro = obter_livro_por_id(db, livro_id)
-        if not livro or livro.filial_id != user["filial_id"]:
+        if not livro or livro.filial_id not in user["filial_ids"]:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Livro não encontrado"
@@ -81,7 +81,7 @@ async def registrar_compra_endpoint(
     """Register a purchase (creates a new batch)"""
     try:
         livro = obter_livro_por_id(db, livro_id)
-        if not livro or livro.filial_id != user["filial_id"]:
+        if not livro or livro.filial_id not in user["filial_ids"]:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Livro não encontrado"
@@ -125,13 +125,13 @@ async def obter_estoque(
 ):
     """Get current stock for a book"""
     livro = obter_livro_por_id(db, livro_id)
-    if not livro or livro.filial_id != user["filial_id"]:
+    if not livro or livro.filial_id not in user["filial_ids"]:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Livro não encontrado"
         )
-    
-    quantidade = obter_estoque_total(db, livro_id, user["filial_id"])
+
+    quantidade = obter_estoque_total(db, livro_id, livro.filial_id)
     return {
         "livro_id": livro_id,
         "titulo": livro.titulo,

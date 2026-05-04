@@ -6,6 +6,7 @@ from app.models.usuario import Usuario
 from app.models.movimentacao import Movimentacao
 from app.models.auditoria import Auditoria
 from app.models.alerta_minimo import AlertaMinimo
+from app.models.usuario_filial import UsuarioFilial
 
 __all__ = [
     "Filial",
@@ -16,4 +17,5 @@ __all__ = [
     "Movimentacao",
     "Auditoria",
     "AlertaMinimo",
+    "UsuarioFilial",
 ]
