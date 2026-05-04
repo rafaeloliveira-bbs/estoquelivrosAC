@@ -21,6 +21,7 @@ async def get_current_user(token: str = Depends(oauth2_scheme)):
         "user_id": payload["user_id"],
         "role": payload["role"],
         "filial_id": payload["filial_id"],
+        "filial_ids": payload["filial_ids"],
     }
 
 

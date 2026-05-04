@@ -167,7 +167,13 @@ def registrar_compra(
         )
         lote = criar_lote(db, lote_data)
         
-        # Create movement
+        # Create movement — usa data_entrada como data_movimento para preservar data histórica
+        from datetime import date as _date
+        data_mov = (
+            datetime.combine(data_entrada, datetime.min.time())
+            if data_entrada and isinstance(data_entrada, _date)
+            else datetime.utcnow()
+        )
         mov = Movimentacao(
             filial_id=filial_id,
             lote_id=lote.id,
@@ -176,7 +182,7 @@ def registrar_compra(
             quantidade=quantidade,
             preco_unitario=preco_unitario,
             observacoes=observacoes,
-            data_movimento=datetime.utcnow()
+            data_movimento=data_mov,
         )
         criar_movimentacao(db, mov)
         

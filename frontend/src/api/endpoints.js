@@ -67,7 +67,7 @@ export const relatoriosAPI = {
   topVendas: (limite = 10, mes, ano) =>
     apiClient.get('/relatorios/top-vendas', { params: { limite, mes, ano } }),
   lotesVencimento: (dias = 30) => apiClient.get('/relatorios/lotes-vencimento', { params: { dias_proximos: dias } }),
-  evolucaoEstoque: () => apiClient.get('/relatorios/evolucao-estoque'),
+  evolucaoEstoque: (filial_id) => apiClient.get('/relatorios/evolucao-estoque', { params: { filial_id } }),
 };
 
 export const usuariosAPI = {

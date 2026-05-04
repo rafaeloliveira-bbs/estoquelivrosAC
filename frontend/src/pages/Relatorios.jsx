@@ -1,5 +1,6 @@
-import { useState, useEffect, Fragment } from 'react';
-import { relatoriosAPI } from '../api/endpoints';
+import { useState, useEffect, useRef, Fragment } from 'react';
+import { relatoriosAPI, filiaisAPI } from '../api/endpoints';
+import { getUserRole } from '../utils/auth';
 import './Relatorios.css';
 
 const MESES_PT = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
@@ -14,17 +15,46 @@ function formatValor(v) {
 }
 
 export default function Relatorios() {
+  const isAdmin = getUserRole() === 'admin' || getUserRole() === 'gestor';
+  const [filiais, setFiliais] = useState([]);
+  const [filialId, setFilialId] = useState('');
   const [dados, setDados] = useState(null);
   const [loading, setLoading] = useState(true);
   const [erro, setErro] = useState('');
   const [busca, setBusca] = useState('');
 
+  const wrapperRef = useRef(null);
+  const topScrollRef = useRef(null);
+  const topScrollInnerRef = useRef(null);
+
   useEffect(() => {
-    relatoriosAPI.evolucaoEstoque()
+    if (isAdmin) filiaisAPI.listar().then(r => setFiliais(r.data)).catch(() => {});
+  }, [isAdmin]);
+
+  // Sincroniza largura da barra superior com o scrollWidth real da tabela
+  useEffect(() => {
+    if (!wrapperRef.current || !topScrollInnerRef.current) return;
+    const sync = () => {
+      topScrollInnerRef.current.style.width = wrapperRef.current.scrollWidth + 'px';
+    };
+    sync();
+    const ro = new ResizeObserver(sync);
+    ro.observe(wrapperRef.current);
+    return () => ro.disconnect();
+  }, [dados]);
+
+  useEffect(() => {
+    carregar();
+  }, []);
+
+  function carregar(fid) {
+    setLoading(true);
+    setErro('');
+    relatoriosAPI.evolucaoEstoque(fid || undefined)
       .then(res => setDados(res.data))
       .catch(() => setErro('Erro ao carregar evolução de estoque'))
       .finally(() => setLoading(false));
-  }, []);
+  }
 
   const itens = dados?.itens ?? [];
   const meses = dados?.meses ?? [];
@@ -40,6 +70,21 @@ export default function Relatorios() {
     <div className="relatorios-page">
       <div className="evolucao-header">
         <h1>Evolução do Estoque</h1>
+        {isAdmin && (
+          <select
+            className="evolucao-filial"
+            value={filialId}
+            onChange={e => {
+              setFilialId(e.target.value);
+              carregar(e.target.value);
+            }}
+          >
+            <option value="">Minha filial</option>
+            {filiais.map(f => (
+              <option key={f.id} value={f.id}>{f.nome}</option>
+            ))}
+          </select>
+        )}
         <input
           className="evolucao-busca"
           type="search"
@@ -58,7 +103,19 @@ export default function Relatorios() {
             {itensFiltrados.length} {itensFiltrados.length === 1 ? 'item' : 'itens'} · {meses.length} meses
           </p>
 
-          <div className="evolucao-wrapper">
+          <div
+            ref={topScrollRef}
+            className="evolucao-top-scroll"
+            onScroll={() => { wrapperRef.current.scrollLeft = topScrollRef.current.scrollLeft; }}
+          >
+            <div ref={topScrollInnerRef} className="evolucao-top-scroll-inner" />
+          </div>
+
+          <div
+            ref={wrapperRef}
+            className="evolucao-wrapper"
+            onScroll={() => { topScrollRef.current.scrollLeft = wrapperRef.current.scrollLeft; }}
+          >
             <table className="evolucao-table">
               <thead>
                 <tr className="tr-mes">

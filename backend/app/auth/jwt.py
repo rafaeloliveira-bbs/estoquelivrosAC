@@ -15,17 +15,18 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
     """Verify a password against hash"""
     return pwd_context.verify(plain_password, hashed_password)
 
-def create_access_token(user_id: int, role: str, filial_id: int, expires_delta: Optional[timedelta] = None) -> tuple[str, int]:
+def create_access_token(user_id: int, role: str, filial_id: int, filial_ids: list[int], expires_delta: Optional[timedelta] = None) -> tuple[str, int]:
     """Create JWT access token"""
     if expires_delta:
         expire = datetime.utcnow() + expires_delta
     else:
         expire = datetime.utcnow() + timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
-    
+
     payload = {
         "sub": str(user_id),
         "role": role,
         "filial_id": filial_id,
+        "filial_ids": filial_ids,
         "exp": expire,
         "type": "access"
     }
@@ -35,13 +36,14 @@ def create_access_token(user_id: int, role: str, filial_id: int, expires_delta: 
 
     return encoded_jwt, expires_in
 
-def create_refresh_token(user_id: int, role: str, filial_id: int) -> str:
+def create_refresh_token(user_id: int, role: str, filial_id: int, filial_ids: list[int]) -> str:
     """Create JWT refresh token"""
     expire = datetime.utcnow() + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS)
     payload = {
         "sub": str(user_id),
         "role": role,
         "filial_id": filial_id,
+        "filial_ids": filial_ids,
         "exp": expire,
         "type": "refresh"
     }
@@ -59,10 +61,12 @@ def decode_token(token: str) -> Optional[dict]:
         if user_id is None:
             return None
 
+        filial_ids = payload.get("filial_ids") or [filial_id]
         return {
             "user_id": int(user_id),
             "role": role,
             "filial_id": filial_id,
+            "filial_ids": filial_ids,
             "type": token_type
         }
     except JWTError:

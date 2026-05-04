@@ -17,21 +17,28 @@ def obter_livro_por_id(db: Session, livro_id: int):
 def obter_livro_por_isbn(db: Session, isbn: str):
     return db.query(Livro).filter(Livro.isbn == isbn).first()
 
+def _filial_clause(model, filial_id):
+    """Suporta filial_id como int ou list[int]."""
+    if isinstance(filial_id, list):
+        return model.filial_id.in_(filial_id)
+    return model.filial_id == filial_id
+
+
 def obter_livro_por_codigo(db: Session, codigo_item: int, filial_id: int):
     return db.query(Livro).filter(
         Livro.codigo_item == codigo_item,
         Livro.filial_id == filial_id
     ).first()
 
-def listar_livros(db: Session, filial_id: int = None, skip: int = 0, limit: int = 100):
+def listar_livros(db: Session, filial_id=None, skip: int = 0, limit: int = 100):
     query = db.query(Livro).filter(Livro.status == "ativo")
-    if filial_id:
-        query = query.filter(Livro.filial_id == filial_id)
+    if filial_id is not None:
+        query = query.filter(_filial_clause(Livro, filial_id))
     return query.offset(skip).limit(limit).all()
 
-def pesquisar_livros(db: Session, filial_id: int, termo: str, skip: int = 0, limit: int = 100):
+def pesquisar_livros(db: Session, filial_id, termo: str, skip: int = 0, limit: int = 100):
     query = db.query(Livro).filter(
-        Livro.filial_id == filial_id,
+        _filial_clause(Livro, filial_id),
         Livro.status == "ativo"
     )
     t = f"%{termo.lower()}%"
@@ -46,14 +53,14 @@ def pesquisar_livros(db: Session, filial_id: int, termo: str, skip: int = 0, lim
     return query.offset(skip).limit(limit).all()
 
 def listar_livros_com_estoque(
-    db: Session, filial_id: int, termo: str = None, skip: int = 0, limit: int = 100
+    db: Session, filial_id, termo: str = None, skip: int = 0, limit: int = 100
 ) -> list[dict]:
     estoque_sub = (
         db.query(
             Lote.livro_id,
             func.coalesce(func.sum(Lote.quantidade_disponivel), 0).label("estoque_total"),
         )
-        .filter(Lote.filial_id == filial_id)
+        .filter(_filial_clause(Lote, filial_id))
         .group_by(Lote.livro_id)
         .subquery()
     )
@@ -61,7 +68,7 @@ def listar_livros_com_estoque(
     query = (
         db.query(Livro, func.coalesce(estoque_sub.c.estoque_total, 0).label("estoque_total"))
         .outerjoin(estoque_sub, estoque_sub.c.livro_id == Livro.id)
-        .filter(Livro.filial_id == filial_id, Livro.status == "ativo")
+        .filter(_filial_clause(Livro, filial_id), Livro.status == "ativo")
     )
 
     if termo:

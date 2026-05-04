@@ -361,7 +361,7 @@ async def limpar_todos_livros(
     user=Depends(requer_role(["admin"])),
 ):
     """Remove permanentemente todos os livros da filial (uso administrativo)."""
-    total = db.query(Livro).filter(Livro.filial_id == user["filial_id"]).delete()
+    total = db.query(Livro).filter(Livro.filial_id.in_(user["filial_ids"])).delete()
     db.commit()
     logger.warning(f"Limpeza total: {total} livros removidos da filial {user['filial_id']}")
     return {"removidos": total}
@@ -385,7 +385,7 @@ async def listar(
     db: Session = Depends(get_db),
     user=Depends(get_current_user),
 ):
-    return listar_livros(db, filial_id=user["filial_id"], skip=skip, limit=limit)
+    return listar_livros(db, filial_id=user["filial_ids"], skip=skip, limit=limit)
 
 
 @router.get("/buscar", response_model=list[LivroResposta])
@@ -396,7 +396,7 @@ async def buscar(
     db: Session = Depends(get_db),
     user=Depends(get_current_user),
 ):
-    livros = pesquisar_livros(db, user["filial_id"], termo, skip, limit)
+    livros = pesquisar_livros(db, user["filial_ids"], termo, skip, limit)
     logger.info(f"Busca: '{termo}' — {len(livros)} resultados")
     return livros
 

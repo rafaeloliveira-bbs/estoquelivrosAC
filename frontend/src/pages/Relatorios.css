@@ -19,6 +19,23 @@
   white-space: nowrap;
 }
 
+.evolucao-filial {
+  padding: 0.55rem 0.75rem;
+  border: 1.5px solid #e0cfc9;
+  border-radius: 6px;
+  font-size: 0.92rem;
+  background: white;
+  color: #554239;
+  cursor: pointer;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.evolucao-filial:focus {
+  outline: none;
+  border-color: #f68c3d;
+  box-shadow: 0 0 0 3px rgba(246, 140, 61, 0.12);
+}
+
 .evolucao-busca {
   flex: 1;
   max-width: 340px;
@@ -42,12 +59,27 @@
   margin-bottom: 0.75rem;
 }
 
+/* ── Barra de rolagem superior espelhada ─────────────────────────────────── */
+.evolucao-top-scroll {
+  overflow-x: scroll;
+  overflow-y: hidden;
+  height: 14px;
+  border-radius: 8px 8px 0 0;
+  border: 1px solid #ecddd7;
+  border-bottom: none;
+}
+
+.evolucao-top-scroll-inner {
+  height: 1px;
+}
+
 /* ── Container da tabela ──────────────────────────────────────────────────── */
 .evolucao-wrapper {
   overflow-x: auto;
-  border-radius: 8px;
+  border-radius: 0 0 8px 8px;
   box-shadow: 0 2px 12px rgba(85, 66, 57, 0.09);
   border: 1px solid #ecddd7;
+  border-top: none;
 }
 
 /* ── Tabela ───────────────────────────────────────────────────────────────── */

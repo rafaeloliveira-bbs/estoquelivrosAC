@@ -10,7 +10,15 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-def relatorio_estoque_atual(db: Session, filial_id: int) -> list:
+
+def _filial_clause(model, filial_id):
+    """Suporta filial_id como int ou list[int]."""
+    if isinstance(filial_id, list):
+        return model.filial_id.in_(filial_id)
+    return model.filial_id == filial_id
+
+
+def relatorio_estoque_atual(db: Session, filial_id) -> list:
     estoque_sub = (
         db.query(
             Lote.livro_id,
@@ -19,7 +27,7 @@ def relatorio_estoque_atual(db: Session, filial_id: int) -> list:
                 func.sum(Lote.quantidade_disponivel * Lote.preco_custo_unitario), 0
             ).label("valor_total"),
         )
-        .filter(Lote.filial_id == filial_id)
+        .filter(_filial_clause(Lote, filial_id))
         .group_by(Lote.livro_id)
         .subquery()
     )
@@ -35,7 +43,7 @@ def relatorio_estoque_atual(db: Session, filial_id: int) -> list:
             func.coalesce(estoque_sub.c.valor_total, 0).label("valor_total"),
         )
         .outerjoin(estoque_sub, estoque_sub.c.livro_id == Livro.id)
-        .filter(Livro.filial_id == filial_id, Livro.status == "ativo")
+        .filter(_filial_clause(Livro, filial_id), Livro.status == "ativo")
         .order_by(Livro.titulo)
         .all()
     )
@@ -59,13 +67,13 @@ def relatorio_estoque_atual(db: Session, filial_id: int) -> list:
 
 def relatorio_movimentacoes(
     db: Session,
-    filial_id: int,
+    filial_id,
     data_inicio: date | None,
     data_fim: date,
     tipo: str | None = None,
 ) -> list:
     filters = [
-        Movimentacao.filial_id == filial_id,
+        _filial_clause(Movimentacao, filial_id),
         Movimentacao.data_movimento <= data_fim,
     ]
     if data_inicio:
@@ -102,7 +110,7 @@ def relatorio_movimentacoes(
 
 def relatorio_top_vendas(
     db: Session,
-    filial_id: int,
+    filial_id,
     limite: int = 10,
     mes: int = None,
     ano: int = None
@@ -115,7 +123,7 @@ def relatorio_top_vendas(
     ).join(Lote, Lote.livro_id == Livro.id).join(
         Movimentacao, Movimentacao.lote_id == Lote.id
     ).filter(
-        Livro.filial_id == filial_id,
+        _filial_clause(Livro, filial_id),
         Movimentacao.tipo == "venda"
     )
 
@@ -139,13 +147,13 @@ def relatorio_top_vendas(
         })
     return result
 
-def relatorio_alertas_minimo(db: Session, filial_id: int) -> list:
+def relatorio_alertas_minimo(db: Session, filial_id) -> list:
     estoque_sub = (
         db.query(
             Lote.livro_id,
             func.coalesce(func.sum(Lote.quantidade_disponivel), 0).label("estoque_atual"),
         )
-        .filter(Lote.filial_id == filial_id)
+        .filter(_filial_clause(Lote, filial_id))
         .group_by(Lote.livro_id)
         .subquery()
     )
@@ -154,7 +162,7 @@ def relatorio_alertas_minimo(db: Session, filial_id: int) -> list:
         db.query(AlertaMinimo, Livro, func.coalesce(estoque_sub.c.estoque_atual, 0).label("estoque_atual"))
         .join(Livro, Livro.id == AlertaMinimo.livro_id)
         .outerjoin(estoque_sub, estoque_sub.c.livro_id == AlertaMinimo.livro_id)
-        .filter(AlertaMinimo.filial_id == filial_id, AlertaMinimo.ativo == True)
+        .filter(_filial_clause(AlertaMinimo, filial_id), AlertaMinimo.ativo == True)
         .all()
     )
 
@@ -175,7 +183,7 @@ def relatorio_alertas_minimo(db: Session, filial_id: int) -> list:
 
 def relatorio_lotes_vencimento(
     db: Session,
-    filial_id: int,
+    filial_id,
     dias_proximos: int = 30
 ) -> list:
     data_limite = date.today() + relativedelta(days=dias_proximos)
@@ -184,7 +192,7 @@ def relatorio_lotes_vencimento(
         db.query(Lote)
         .options(joinedload(Lote.livro))
         .filter(
-            Lote.filial_id == filial_id,
+            _filial_clause(Lote, filial_id),
             Lote.validade_minima.isnot(None),
             Lote.validade_minima <= data_limite,
             Lote.quantidade_disponivel > 0,
@@ -209,7 +217,7 @@ def relatorio_lotes_vencimento(
     return result
 
 
-def relatorio_evolucao_estoque(db: Session, filial_id: int) -> dict:
+def relatorio_evolucao_estoque(db: Session, filial_id) -> dict:
     from calendar import monthrange
     from collections import defaultdict
 
@@ -227,25 +235,34 @@ def relatorio_evolucao_estoque(db: Session, filial_id: int) -> dict:
     # Todos os livros da filial, ordenados por código e título
     livros = (
         db.query(Livro)
-        .filter(Livro.filial_id == filial_id)
+        .filter(_filial_clause(Livro, filial_id))
         .order_by(Livro.codigo_item, Livro.titulo)
         .all()
     )
 
-    # Todos os movimentos da filial com livro_id via join no lote
-    all_movs = (
+    # Todos os movimentos da filial com livro_id e data_entrada do lote via join
+    all_movs_raw = (
         db.query(
             Movimentacao.tipo,
             Movimentacao.quantidade,
             Movimentacao.preco_unitario,
             Movimentacao.data_movimento,
             Lote.livro_id,
+            Lote.data_entrada,
         )
         .join(Lote, Movimentacao.lote_id == Lote.id)
-        .filter(Movimentacao.filial_id == filial_id)
-        .order_by(Movimentacao.data_movimento)
+        .filter(_filial_clause(Movimentacao, filial_id))
         .all()
     )
+
+    # Data efetiva: compras usam data_entrada do lote (corrige imports históricos
+    # gravados com data_movimento = data do import em vez da data real da entrada)
+    def _data_efetiva(mv) -> datetime:
+        if mv.tipo == 'compra' and mv.data_entrada:
+            return datetime.combine(mv.data_entrada, datetime.min.time())
+        return mv.data_movimento
+
+    all_movs = sorted(all_movs_raw, key=_data_efetiva)
 
     movs_by_livro: dict[int, list] = defaultdict(list)
     for mov in all_movs:
@@ -268,7 +285,7 @@ def relatorio_evolucao_estoque(db: Session, filial_id: int) -> dict:
             month_end = datetime(month.year, month.month, last_day, 23, 59, 59)
 
             while mov_idx < len(movs):
-                dm = movs[mov_idx].data_movimento
+                dm = _data_efetiva(movs[mov_idx])
                 if dm <= month_end:
                     mv = movs[mov_idx]
                     if mv.tipo in ('compra', 'devolucao'):

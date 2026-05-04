@@ -94,12 +94,15 @@ async def alertas_minimo(
 
 @router.get("/evolucao-estoque")
 async def evolucao_estoque(
+    filial_id: int = Query(None),
     db: Session = Depends(get_db),
     user = Depends(get_current_user)
 ):
     """Stock evolution month by month since Dec 2024"""
-    dados = relatorio_evolucao_estoque(db, user["filial_id"])
-    logger.info(f"Evolução de estoque gerada: {len(dados['itens'])} itens, {len(dados['meses'])} meses")
+    is_privileged = user["role"] in ("admin", "gestor")
+    effective_filial_id = filial_id if (is_privileged and filial_id) else user["filial_id"]
+    dados = relatorio_evolucao_estoque(db, effective_filial_id)
+    logger.info(f"Evolução de estoque gerada: filial={effective_filial_id}, {len(dados['itens'])} itens")
     return dados
 
 
