@@ -535,3 +535,35 @@
 
 .btn-primary:hover:not(:disabled) { background: #c94b1b; }
 .btn-primary:disabled { opacity: 0.6; cursor: not-allowed; }
+
+/* ── Seletor de filial no preview de saídas ── */
+.filial-seletor {
+  margin: 1.25rem 0 0.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.filial-seletor label {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: #554239;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.filial-seletor select {
+  padding: 0.6rem 0.75rem;
+  border: 1.5px solid #e0cfc9;
+  border-radius: 6px;
+  font-size: 0.95rem;
+  background: white;
+  max-width: 360px;
+  cursor: pointer;
+}
+
+.filial-seletor select:focus {
+  outline: none;
+  border-color: #f68c3d;
+  box-shadow: 0 0 0 3px rgba(246, 140, 61, 0.12);
+}

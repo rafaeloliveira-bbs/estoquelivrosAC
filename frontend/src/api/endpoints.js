@@ -41,8 +41,9 @@ export const movimentacoesAPI = {
     apiClient.post('/movimentacoes/historico-entradas/preview-csv', formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
     }),
-  importarHistoricoEntradas: (formData) =>
+  importarHistoricoEntradas: (formData, filial_id) =>
     apiClient.post('/movimentacoes/historico-entradas/importar-csv', formData, {
+      params: { filial_id },
       headers: { 'Content-Type': 'multipart/form-data' },
     }),
   templateHistoricoSaidas: () =>
@@ -51,8 +52,9 @@ export const movimentacoesAPI = {
     apiClient.post('/movimentacoes/historico-saidas/preview-csv', formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
     }),
-  importarHistoricoSaidas: (formData) =>
+  importarHistoricoSaidas: (formData, filial_id) =>
     apiClient.post('/movimentacoes/historico-saidas/importar-csv', formData, {
+      params: { filial_id },
       headers: { 'Content-Type': 'multipart/form-data' },
     }),
 };

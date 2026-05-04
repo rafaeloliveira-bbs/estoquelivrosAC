@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { livrosAPI, movimentacoesAPI, relatoriosAPI } from '../api/endpoints';
+import { livrosAPI, movimentacoesAPI, relatoriosAPI, filiaisAPI } from '../api/endpoints';
 import { getUserRole } from '../utils/auth';
 import { parseMoeda, formatMoedaBR } from '../utils/moeda';
 import './Movimentacoes.css';
@@ -9,13 +9,13 @@ const MOEDA_FIELDS = new Set(['valor_unitario', 'valor_total']);
 const FIELD_LABELS = {
   data: 'Data',
   nf: 'Nº NF',
-  codigo_item: 'Código do Item',
+  codigo_item: 'Item',
   grade: 'Grade',
   titulo: 'Título',
-  valor_unitario: 'Valor Unitário',
-  quantidade: 'Quantidade',
+  valor_unitario: 'Valor Unit.',
+  quantidade: 'Qnt',
   valor_total: 'Valor Total',
-  observacao: 'Observação',
+  observacao: 'Observações',
   filial_id: 'ID Filial',
 };
 
@@ -69,7 +69,15 @@ export default function Movimentacoes() {
   const [resultadoImport, setResultadoImport] = useState(null);
   const [erroImport, setErroImport] = useState('');
 
+  // ── Lista de filiais (para seletor no import de saídas) ──────────────────────
+  const [filiais, setFiliais] = useState([]);
+  useEffect(() => {
+    filiaisAPI.listar().then((r) => setFiliais(r.data)).catch(() => {});
+  }, []);
+
   // ── CSV import – Saídas ──────────────────────────────────────────────────────
+  const [filialEntradasId, setFilialEntradasId] = useState('');
+  const [filialSaidasId, setFilialSaidasId] = useState('');
   const fileInputSaidasRef = useRef(null);
   const csvMenuSaidasRef = useRef(null);
   const [csvMenuSaidasAberto, setCsvMenuSaidasAberto] = useState(false);
@@ -227,10 +235,11 @@ export default function Movimentacoes() {
     const formData = new FormData();
     formData.append('file', selectedFile);
     try {
-      const res = await movimentacoesAPI.importarHistoricoEntradas(formData);
+      const res = await movimentacoesAPI.importarHistoricoEntradas(formData, filialEntradasId || undefined);
       setResultadoImport(res.data);
       setPreviewEntradas(null);
       setSelectedFile(null);
+      setFilialEntradasId('');
       setDataInicio('');
       setDataFim('');
       setSecao('historico');
@@ -244,6 +253,7 @@ export default function Movimentacoes() {
   const handleCancelarPreview = () => {
     setPreviewEntradas(null);
     setSelectedFile(null);
+    setFilialEntradasId('');
     setErroImport('');
   };
 
@@ -287,10 +297,11 @@ export default function Movimentacoes() {
     const formData = new FormData();
     formData.append('file', selectedFileSaidas);
     try {
-      const res = await movimentacoesAPI.importarHistoricoSaidas(formData);
+      const res = await movimentacoesAPI.importarHistoricoSaidas(formData, filialSaidasId || undefined);
       setResultadoImportSaidas(res.data);
       setPreviewSaidas(null);
       setSelectedFileSaidas(null);
+      setFilialSaidasId('');
       setDataInicio('');
       setDataFim('');
       setSecao('historico');
@@ -304,6 +315,7 @@ export default function Movimentacoes() {
   const handleCancelarPreviewSaidas = () => {
     setPreviewSaidas(null);
     setSelectedFileSaidas(null);
+    setFilialSaidasId('');
     setErroImportSaidas('');
   };
 
@@ -399,8 +411,25 @@ export default function Movimentacoes() {
                   </table>
                 </div>
               )}
+              <div className="filial-seletor">
+                <label htmlFor="filial-entradas">Filial vinculada às entradas *</label>
+                <select
+                  id="filial-entradas"
+                  value={filialEntradasId}
+                  onChange={(e) => setFilialEntradasId(e.target.value)}
+                  required
+                >
+                  <option value="">— Selecione a filial —</option>
+                  {filiais.map((f) => (
+                    <option key={f.id} value={f.id}>
+                      {f.id} — {f.nome}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
               <div className="preview-actions">
-                <button className="btn-primary" onClick={handleConfirmarImportacao} disabled={importando}>
+                <button className="btn-primary" onClick={handleConfirmarImportacao} disabled={importando || !filialEntradasId}>
                   {importando ? 'Importando...' : 'Confirmar Importação'}
                 </button>
                 <button className="btn-secondary" onClick={handleCancelarPreview}>Cancelar</button>
@@ -456,8 +485,29 @@ export default function Movimentacoes() {
                   </table>
                 </div>
               )}
+              <div className="filial-seletor">
+                <label htmlFor="filial-saidas">Filial vinculada às saídas *</label>
+                <select
+                  id="filial-saidas"
+                  value={filialSaidasId}
+                  onChange={(e) => setFilialSaidasId(e.target.value)}
+                  required
+                >
+                  <option value="">— Selecione a filial —</option>
+                  {filiais.map((f) => (
+                    <option key={f.id} value={f.id}>
+                      {f.id} — {f.nome}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
               <div className="preview-actions">
-                <button className="btn-primary" onClick={handleConfirmarImportacaoSaidas} disabled={importandoSaidas}>
+                <button
+                  className="btn-primary"
+                  onClick={handleConfirmarImportacaoSaidas}
+                  disabled={importandoSaidas || !filialSaidasId}
+                >
                   {importandoSaidas ? 'Importando...' : 'Confirmar Importação'}
                 </button>
                 <button className="btn-secondary" onClick={handleCancelarPreviewSaidas}>Cancelar</button>

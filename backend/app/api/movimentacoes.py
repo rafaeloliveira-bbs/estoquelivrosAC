@@ -145,7 +145,7 @@ async def obter_estoque(
 
 _COLUNAS_HISTORICO = [
     "Data", "Nº NF", "Código do Item", "Grade", "Título",
-    "Valor Unitário", "Quantidade", "Valor Total", "Observação", "ID Filial",
+    "Valor Unitário", "Quantidade", "Valor Total", "Observação",
 ]
 
 
@@ -186,7 +186,7 @@ def _sem_acento(s: str) -> str:
 def _mapear_colunas_historico(fieldnames: list[str]) -> dict:
     col_map = {k: None for k in (
         "data", "nf", "codigo_item", "grade", "titulo",
-        "valor_unitario", "quantidade", "valor_total", "observacao", "filial_id",
+        "valor_unitario", "quantidade", "valor_total", "observacao",
     )}
     for col in fieldnames:
         c = _sem_acento(col)
@@ -211,8 +211,6 @@ def _mapear_colunas_historico(fieldnames: list[str]) -> dict:
             col_map["valor_total"] = col
         elif c in ("observacao", "obs", "obs.", "observacoes"):
             col_map["observacao"] = col
-        elif c in ("id filial", "filial_id", "filial id", "id da filial", "filial"):
-            col_map["filial_id"] = col
     return col_map
 
 
@@ -232,7 +230,6 @@ async def template_historico_entradas_csv(user=Depends(get_current_user)):
         "Quantidade": "50",
         "Valor Total": "1495.00",
         "Observação": "",
-        "ID Filial": "2",
     })
     output.seek(0)
     return StreamingResponse(
@@ -282,7 +279,7 @@ async def preview_historico_entradas_csv(
         mapped = {}
         for field in ("data", "nf", "codigo_item", "grade", "titulo",
                       "valor_unitario", "quantidade", "valor_total", "observacao"):
-            raw = _get(row, field)
+            raw = _get(row, field)  # filial_id comes from UI selector, not CSV
             if field == "data" and raw:
                 try:
                     datetime.strptime(raw, "%d/%m/%Y")
@@ -320,11 +317,14 @@ async def preview_historico_entradas_csv(
 
 @router.post("/historico-entradas/importar-csv")
 async def importar_historico_entradas_csv(
+    filial_id: int = Query(None),
     file: UploadFile = File(...),
     db: Session = Depends(get_db),
     user=Depends(requer_role(["gestor", "admin"])),
 ):
-    """Importa histórico de entradas a partir de um arquivo CSV."""
+    """Importa histórico de entradas a partir de um arquivo CSV. filial_id escolhido na UI."""
+    filial_id_efetivo = filial_id if filial_id is not None else user["filial_id"]
+
     content = await file.read()
     try:
         decoded = content.decode("utf-8-sig")
@@ -334,7 +334,7 @@ async def importar_historico_entradas_csv(
     reader = csv.DictReader(io.StringIO(decoded))
     fieldnames = reader.fieldnames or []
     col_map = _mapear_colunas_historico(fieldnames)
-    logger.info(f"Importação histórico entradas — cabeçalhos: {fieldnames}")
+    logger.info(f"Importação histórico entradas — filial={filial_id_efetivo}, cabeçalhos: {fieldnames}")
 
     def _get(row, field):
         col = col_map.get(field)
@@ -358,24 +358,9 @@ async def importar_historico_entradas_csv(
                 erros.append(f"Linha {i}: 'Código do Item' deve ser numérico (recebido: '{codigo_raw}')")
                 continue
 
-            # Resolve filial_id (CSV column takes precedence for admins)
-            filial_csv_raw = _get(row, "filial_id")
-            filial_id_row = user["filial_id"]
-            if filial_csv_raw:
-                try:
-                    fid = int(filial_csv_raw)
-                    filial_obj = obter_filial_por_id(db, fid)
-                except ValueError:
-                    filial_obj = obter_filial_por_nome(db, filial_csv_raw)
-                    fid = filial_obj.id if filial_obj else None
-                if not filial_obj:
-                    avisos.append(f"Linha {i}: Filial '{filial_csv_raw}' não encontrada, usando filial do usuário")
-                else:
-                    filial_id_row = fid
-
-            livro = obter_livro_por_codigo(db, codigo_item, filial_id_row)
+            livro = obter_livro_por_codigo(db, codigo_item, filial_id_efetivo)
             if not livro:
-                erros.append(f"Linha {i}: Item '{codigo_item}' não encontrado na filial {filial_id_row}")
+                erros.append(f"Linha {i}: Item '{codigo_item}' não encontrado na filial {filial_id_efetivo}")
                 continue
 
             # Validações opcionais de Grade e Título
@@ -439,7 +424,7 @@ async def importar_historico_entradas_csv(
                 quantidade=quantidade,
                 preco_unitario=valor_unitario,
                 usuario_id=user["user_id"],
-                filial_id=filial_id_row,
+                filial_id=filial_id_efetivo,
                 numero_lote=numero_lote,
                 data_entrada=data_entrada,
                 observacoes=observacao,
@@ -458,8 +443,34 @@ async def importar_historico_entradas_csv(
 
 # ─── Importação CSV – Histórico de Saídas ────────────────────────────────────
 
-# Mesmas colunas das entradas; a diferença está na lógica de importação.
-_COLUNAS_HISTORICO_SAIDAS = _COLUNAS_HISTORICO
+_COLUNAS_HISTORICO_SAIDAS = [
+    "Data", "Observações", "Item", "Título", "Valor Unit", "Qnt", "Valor Total",
+]
+
+
+def _mapear_colunas_historico_saidas(fieldnames: list[str]) -> dict:
+    col_map = {k: None for k in (
+        "data", "observacao", "codigo_item", "titulo",
+        "valor_unitario", "quantidade", "valor_total",
+    )}
+    for col in fieldnames:
+        c = _sem_acento(col)
+        if c in ("data", "data saida", "data de saida", "data venda"):
+            col_map["data"] = col
+        elif c in ("observacoes", "observacao", "obs", "obs.", "observacao"):
+            col_map["observacao"] = col
+        elif c in ("item", "codigo do item", "codigo", "cod. item", "cod item", "codigo item"):
+            col_map["codigo_item"] = col
+        elif c in ("titulo",):
+            col_map["titulo"] = col
+        elif c in ("valor unit", "valor unitario", "preco unitario", "valor unit.",
+                   "vl. unit.", "vlr unitario", "valor un."):
+            col_map["valor_unitario"] = col
+        elif c in ("qnt", "quantidade", "qtd", "qty", "qnt.", "qtde"):
+            col_map["quantidade"] = col
+        elif c in ("valor total", "total", "vl. total", "vlr total"):
+            col_map["valor_total"] = col
+    return col_map
 
 
 @router.get("/historico-saidas/template-csv")
@@ -470,15 +481,12 @@ async def template_historico_saidas_csv(user=Depends(get_current_user)):
     writer.writeheader()
     writer.writerow({
         "Data": "15/03/2024",
-        "Nº NF": "98765",
-        "Código do Item": "1001",
-        "Grade": "5o Ano",
+        "Observações": "",
+        "Item": "1001",
         "Título": "Exemplo de Livro",
-        "Valor Unitário": "39.90",
-        "Quantidade": "10",
+        "Valor Unit": "39.90",
+        "Qnt": "10",
         "Valor Total": "399.00",
-        "Observação": "",
-        "ID Filial": "2",
     })
     output.seek(0)
     return StreamingResponse(
@@ -503,7 +511,7 @@ async def preview_historico_saidas_csv(
 
     reader = csv.DictReader(io.StringIO(decoded))
     fieldnames = reader.fieldnames or []
-    col_map = _mapear_colunas_historico(fieldnames)
+    col_map = _mapear_colunas_historico_saidas(fieldnames)
 
     preview_rows = []
     for i, row in enumerate(reader):
@@ -513,11 +521,11 @@ async def preview_historico_saidas_csv(
 
     warnings = []
     if not col_map["codigo_item"]:
-        warnings.append("Coluna obrigatória 'Código do Item' não encontrada")
+        warnings.append("Coluna obrigatória 'Item' não encontrada")
     if not col_map["quantidade"]:
-        warnings.append("Coluna obrigatória 'Quantidade' não encontrada")
+        warnings.append("Coluna obrigatória 'Qnt' não encontrada")
     if not col_map["valor_unitario"]:
-        warnings.append("Coluna obrigatória 'Valor Unitário' não encontrada")
+        warnings.append("Coluna obrigatória 'Valor Unit' não encontrada")
 
     def _get(row, field):
         col = col_map.get(field)
@@ -526,8 +534,8 @@ async def preview_historico_saidas_csv(
     mapped_preview = []
     for row in preview_rows:
         mapped = {}
-        for field in ("data", "nf", "codigo_item", "grade", "titulo",
-                      "valor_unitario", "quantidade", "valor_total", "observacao", "filial_id"):
+        for field in ("data", "observacao", "codigo_item", "titulo",
+                      "valor_unitario", "quantidade", "valor_total"):
             raw = _get(row, field)
             if field == "data" and raw:
                 try:
@@ -557,7 +565,6 @@ async def preview_historico_saidas_csv(
     return {
         "fieldnames": fieldnames,
         "column_mapping": col_map,
-        "preview_rows": preview_rows,
         "mapped_preview": mapped_preview,
         "warnings": warnings,
         "total_rows": len(preview_rows),
@@ -566,11 +573,14 @@ async def preview_historico_saidas_csv(
 
 @router.post("/historico-saidas/importar-csv")
 async def importar_historico_saidas_csv(
+    filial_id: int = Query(None),
     file: UploadFile = File(...),
     db: Session = Depends(get_db),
     user=Depends(requer_role(["gestor", "admin"])),
 ):
-    """Importa histórico de saídas (vendas) a partir de um arquivo CSV."""
+    """Importa histórico de saídas (vendas). filial_id escolhido na UI."""
+    filial_id_efetivo = filial_id if filial_id is not None else user["filial_id"]
+
     content = await file.read()
     try:
         decoded = content.decode("utf-8-sig")
@@ -579,8 +589,8 @@ async def importar_historico_saidas_csv(
 
     reader = csv.DictReader(io.StringIO(decoded))
     fieldnames = reader.fieldnames or []
-    col_map = _mapear_colunas_historico(fieldnames)
-    logger.info(f"Importação histórico saídas — cabeçalhos: {fieldnames}")
+    col_map = _mapear_colunas_historico_saidas(fieldnames)
+    logger.info(f"Importação histórico saídas — filial={filial_id_efetivo}, cabeçalhos: {fieldnames}")
 
     def _get(row, field):
         col = col_map.get(field)
@@ -592,51 +602,30 @@ async def importar_historico_saidas_csv(
 
     for i, row in enumerate(reader, start=2):
         try:
-            # Código do Item — obrigatório
+            # Item (código) — obrigatório
             codigo_raw = _get(row, "codigo_item")
             if not codigo_raw:
-                erros.append(f"Linha {i}: 'Código do Item' é obrigatório")
+                erros.append(f"Linha {i}: 'Item' é obrigatório")
                 continue
             try:
                 codigo_item = int(codigo_raw)
             except ValueError:
-                erros.append(f"Linha {i}: 'Código do Item' deve ser numérico (recebido: '{codigo_raw}')")
+                erros.append(f"Linha {i}: 'Item' deve ser numérico (recebido: '{codigo_raw}')")
                 continue
 
-            # Resolve filial_id
-            filial_csv_raw = _get(row, "filial_id")
-            filial_id_row = user["filial_id"]
-            if filial_csv_raw:
-                try:
-                    fid = int(filial_csv_raw)
-                    filial_obj = obter_filial_por_id(db, fid)
-                except ValueError:
-                    filial_obj = obter_filial_por_nome(db, filial_csv_raw)
-                    fid = filial_obj.id if filial_obj else None
-                if not filial_obj:
-                    avisos.append(f"Linha {i}: Filial '{filial_csv_raw}' não encontrada, usando filial do usuário")
-                else:
-                    filial_id_row = fid
-
-            livro = obter_livro_por_codigo(db, codigo_item, filial_id_row)
+            livro = obter_livro_por_codigo(db, codigo_item, filial_id_efetivo)
             if not livro:
-                erros.append(f"Linha {i}: Item '{codigo_item}' não encontrado na filial {filial_id_row}")
+                erros.append(f"Linha {i}: Item '{codigo_item}' não encontrado na filial {filial_id_efetivo}")
                 continue
 
-            # Validações opcionais
-            grade_csv = _get(row, "grade")
-            if grade_csv and livro.grade and grade_csv.strip().lower() != livro.grade.strip().lower():
-                avisos.append(
-                    f"Linha {i}: Grade do CSV ('{grade_csv}') difere do cadastro ('{livro.grade}') — importado assim mesmo"
-                )
-
+            # Validação opcional de título
             titulo_csv = _get(row, "titulo")
             if titulo_csv and titulo_csv.strip().lower() != livro.titulo.strip().lower():
                 avisos.append(
                     f"Linha {i}: Título do CSV ('{titulo_csv}') difere do cadastro ('{livro.titulo}') — importado assim mesmo"
                 )
 
-            # Data
+            # Data — DD/MM/AAAA (opcional; padrão: hoje)
             data_str = _get(row, "data")
             data_venda = None
             if data_str:
@@ -646,10 +635,10 @@ async def importar_historico_saidas_csv(
                     erros.append(f"Linha {i}: Data inválida '{data_str}' (esperado DD/MM/AAAA)")
                     continue
 
-            # Quantidade — obrigatório
+            # Qnt — obrigatório
             qtd_raw = _get(row, "quantidade")
             if not qtd_raw:
-                erros.append(f"Linha {i}: 'Quantidade' é obrigatório")
+                erros.append(f"Linha {i}: 'Qnt' é obrigatório")
                 continue
             try:
                 quantidade = _limpar_quantidade(qtd_raw)
@@ -659,20 +648,19 @@ async def importar_historico_saidas_csv(
                 erros.append(f"Linha {i}: Quantidade inválida '{qtd_raw}' (deve ser inteiro > 0)")
                 continue
 
-            # Valor Unitário — obrigatório
+            # Valor Unit — obrigatório
             valor_raw = _get(row, "valor_unitario")
             if not valor_raw:
-                erros.append(f"Linha {i}: 'Valor Unitário' é obrigatório")
+                erros.append(f"Linha {i}: 'Valor Unit' é obrigatório")
                 continue
             try:
                 valor_unitario = Decimal(_limpar_monetario(valor_raw))
                 if valor_unitario < 0:
                     raise InvalidOperation()
             except (InvalidOperation, Exception):
-                erros.append(f"Linha {i}: Valor Unitário inválido '{valor_raw}'")
+                erros.append(f"Linha {i}: Valor Unit inválido '{valor_raw}'")
                 continue
 
-            nf_raw = _get(row, "nf") or None
             observacao = _get(row, "observacao") or None
 
             registrar_venda(
@@ -680,8 +668,7 @@ async def importar_historico_saidas_csv(
                 livro_id=livro.id,
                 quantidade=quantidade,
                 usuario_id=user["user_id"],
-                filial_id=filial_id_row,
-                documento_referencia=nf_raw,
+                filial_id=filial_id_efetivo,
                 observacoes=observacao,
                 preco_venda=valor_unitario,
                 data_venda=data_venda,
