@@ -8,6 +8,7 @@ from app.schemas.usuario import UsuarioLogin, TokenResposta, UsuarioResposta, Us
 from app.crud.usuario import obter_usuario_por_email, obter_usuario_por_id, criar_usuario, atualizar_ultimo_acesso
 from app.auth.jwt import verify_password, create_access_token, create_refresh_token, decode_token
 from app.models.usuario_filial import UsuarioFilial
+from app.models.filial import Filial
 from app.config import logger
 
 limiter = Limiter(key_func=get_remote_address)
@@ -39,18 +40,21 @@ async def _autenticar_usuario(email: str, senha: str, db: Session) -> dict:
             detail="Email ou senha incorretos",
         )
 
-    # Carrega todas as filiais vinculadas ao usuário
-    registros = db.query(UsuarioFilial).filter(UsuarioFilial.usuario_id == usuario.id).all()
-    if not registros:
-        # Primeira vez: semente a filial primária para manter o dado consistente
-        try:
-            db.add(UsuarioFilial(usuario_id=usuario.id, filial_id=usuario.filial_id))
-            db.commit()
-        except Exception:
-            db.rollback()
-        filial_ids = [usuario.filial_id]
+    # Admin enxerga todas as filiais; demais usuários usam a tabela UsuarioFilial
+    if usuario.role == "admin":
+        filial_ids = [f.id for f in db.query(Filial).all()] or [usuario.filial_id]
     else:
-        filial_ids = [uf.filial_id for uf in registros]
+        registros = db.query(UsuarioFilial).filter(UsuarioFilial.usuario_id == usuario.id).all()
+        if not registros:
+            # Primeira vez: semeia a filial primária para manter o dado consistente
+            try:
+                db.add(UsuarioFilial(usuario_id=usuario.id, filial_id=usuario.filial_id))
+                db.commit()
+            except Exception:
+                db.rollback()
+            filial_ids = [usuario.filial_id]
+        else:
+            filial_ids = [uf.filial_id for uf in registros]
 
     # Tokens gerados antes de qualquer escrita opcional no banco
     access_token, expires_in = create_access_token(
@@ -113,7 +117,11 @@ async def refresh(body: RefreshRequest, db: Session = Depends(get_db)):
             detail="Usuário não encontrado ou desativado",
         )
 
-    filial_ids = payload.get("filial_ids") or [payload["filial_id"]]
+    if usuario.role == "admin":
+        filial_ids = [f.id for f in db.query(Filial).all()] or [payload["filial_id"]]
+    else:
+        registros = db.query(UsuarioFilial).filter(UsuarioFilial.usuario_id == usuario.id).all()
+        filial_ids = [uf.filial_id for uf in registros] or [payload["filial_id"]]
     access_token, expires_in = create_access_token(
         user_id=payload["user_id"],
         role=payload["role"],
