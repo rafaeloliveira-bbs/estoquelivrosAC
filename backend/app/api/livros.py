@@ -2,6 +2,7 @@ import csv
 import io
 from decimal import Decimal
 from datetime import date
+from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, status, Query, UploadFile, File
 from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
@@ -307,7 +308,7 @@ async def importar_csv(
             if codigo_item:
                 existente = obter_livro_por_codigo(db, codigo_item, filial_id)
             if not existente and isbn_13:
-                existente = obter_livro_por_isbn(db, isbn_13)
+                existente = obter_livro_por_isbn(db, isbn_13, filial_id)
 
             if existente:
                 for k, v in dados.items():
@@ -404,12 +405,19 @@ async def buscar(
 @router.get("/com-estoque")
 async def listar_com_estoque(
     termo: str = Query(None),
+    filial_id: Optional[int] = Query(None),
     skip: int = Query(0, ge=0),
     limit: int = Query(100, ge=1, le=1000),
     db: Session = Depends(get_db),
     user=Depends(get_current_user),
 ):
-    return listar_livros_com_estoque(db, filial_id=user["filial_ids"], termo=termo or None, skip=skip, limit=limit)
+    if filial_id is not None:
+        if filial_id not in user["filial_ids"]:
+            raise HTTPException(status_code=403, detail="Filial não autorizada")
+        effective_filial = filial_id
+    else:
+        effective_filial = user["filial_ids"]
+    return listar_livros_com_estoque(db, filial_id=effective_filial, termo=termo or None, skip=skip, limit=limit)
 
 
 @router.get("/por-codigo/{codigo_item}", response_model=LivroResposta)

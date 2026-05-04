@@ -14,8 +14,11 @@ def criar_livro(db: Session, livro: LivroCriar):
 def obter_livro_por_id(db: Session, livro_id: int):
     return db.query(Livro).filter(Livro.id == livro_id).first()
 
-def obter_livro_por_isbn(db: Session, isbn: str):
-    return db.query(Livro).filter(Livro.isbn == isbn).first()
+def obter_livro_por_isbn(db: Session, isbn: str, filial_id=None):
+    q = db.query(Livro).filter(Livro.isbn == isbn)
+    if filial_id is not None:
+        q = q.filter(_filial_clause(Livro, filial_id))
+    return q.first()
 
 def _filial_clause(model, filial_id):
     """Suporta filial_id como int ou list[int]."""

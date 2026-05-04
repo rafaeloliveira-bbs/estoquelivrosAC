@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { livrosAPI, categoriasAPI } from '../api/endpoints';
-import { getUserRole } from '../utils/auth';
+import { livrosAPI, categoriasAPI, filiaisAPI } from '../api/endpoints';
+import { getUserRole, getTokenPayload } from '../utils/auth';
 import { parseMoeda, formatMoedaBR } from '../utils/moeda';
 import './Livros.css';
 
@@ -14,14 +14,17 @@ const FORM_VAZIO = {
 export default function Livros() {
   const queryClient = useQueryClient();
   const isAdmin = getUserRole() === 'admin';
+  const filialIds = getTokenPayload()?.filial_ids ?? [];
   const [busca, setBusca] = useState('');
   const [buscaDebounced, setBuscaDebounced] = useState('');
+  const [filialFiltro, setFilialFiltro] = useState(null);
   const [modal, setModal] = useState(null);
   const [livroAtual, setLivroAtual] = useState(null);
   const [form, setForm] = useState(FORM_VAZIO);
   const [erro, setErro] = useState('');
   const [sucesso, setSucesso] = useState('');
   const [importando, setImportando] = useState(false);
+  const [importProgress, setImportProgress] = useState(0);
   const [resultadoImport, setResultadoImport] = useState(null);
   const [preview, setPreview] = useState(null);
   const [selectedFile, setSelectedFile] = useState(null);
@@ -45,10 +48,19 @@ export default function Livros() {
     return () => document.removeEventListener('mousedown', fechar);
   }, [csvMenuAberto]);
 
+  useEffect(() => {
+    if (!importando) return;
+    setImportProgress(10);
+    const interval = setInterval(() => {
+      setImportProgress((p) => (p >= 85 ? p : p + (85 - p) * 0.12));
+    }, 250);
+    return () => clearInterval(interval);
+  }, [importando]);
+
   const { data: livros = [], isLoading: loading } = useQuery({
-    queryKey: ['livros', buscaDebounced],
+    queryKey: ['livros', buscaDebounced, filialFiltro],
     queryFn: () =>
-      livrosAPI.listarComEstoque(buscaDebounced.trim() || null).then((r) => r.data),
+      livrosAPI.listarComEstoque(buscaDebounced.trim() || null, filialFiltro).then((r) => r.data),
     staleTime: 30_000,
   });
 
@@ -56,6 +68,14 @@ export default function Livros() {
     queryKey: ['categorias'],
     queryFn: () => categoriasAPI.listar().then((r) => r.data),
     staleTime: 5 * 60_000,
+  });
+
+  const { data: filiais = [] } = useQuery({
+    queryKey: ['filiais'],
+    queryFn: () =>
+      filiaisAPI.listar().then((r) => r.data.filter((f) => filialIds.includes(f.id))),
+    staleTime: 10 * 60_000,
+    enabled: filialIds.length > 1,
   });
 
   const invalidarLivros = () =>
@@ -193,6 +213,7 @@ export default function Livros() {
   const handleConfirmarImportacao = async () => {
     if (!selectedFile) return;
     setImportando(true);
+    setImportProgress(0);
     setResultadoImport(null);
     setErro('');
     try {
@@ -207,6 +228,8 @@ export default function Livros() {
       setErro(err.response?.data?.detail || 'Erro ao importar planilha');
     } finally {
       setImportando(false);
+      setImportProgress(100);
+      setTimeout(() => setImportProgress(0), 700);
     }
   };
 
@@ -257,6 +280,20 @@ export default function Livros() {
 
       {sucesso && <div className="alert-success">{sucesso}</div>}
       {erro && !modal && <div className="alert-error">{erro}</div>}
+
+      {importProgress > 0 && (
+        <div className="import-progress-wrap">
+          <div className="import-progress-label">
+            {importando ? `Importando... ${Math.round(importProgress)}%` : 'Concluído!'}
+          </div>
+          <div className="import-progress-track">
+            <div
+              className="import-progress-bar"
+              style={{ width: `${Math.min(importProgress, 100)}%`, transition: importando ? 'width 0.25s ease' : 'width 0.4s ease' }}
+            />
+          </div>
+        </div>
+      )}
 
       {resultadoImport && (
         <div className={`import-result ${resultadoImport.erros?.length ? 'import-result--warn' : 'import-result--ok'}`}>
@@ -346,6 +383,29 @@ export default function Livros() {
         />
         {busca && <button className="btn-clear" onClick={() => setBusca('')}>✕</button>}
       </div>
+
+      {filiais.length > 1 && (
+        <div className="filial-filter">
+          <span className="filial-filter-label">Filial:</span>
+          <div className="filial-flags">
+            <button
+              className={`filial-flag ${filialFiltro === null ? 'filial-flag--active' : ''}`}
+              onClick={() => setFilialFiltro(null)}
+            >
+              Todas
+            </button>
+            {filiais.map((f) => (
+              <button
+                key={f.id}
+                className={`filial-flag ${filialFiltro === f.id ? 'filial-flag--active' : ''}`}
+                onClick={() => setFilialFiltro(f.id)}
+              >
+                {f.nome}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
       {loading ? (
         <div className="loading">Carregando...</div>

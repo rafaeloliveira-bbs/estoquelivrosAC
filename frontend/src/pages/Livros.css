@@ -564,3 +564,81 @@
 .csv-menu button:hover {
   background: #fdf3ea;
 }
+
+/* Filtro de filial */
+.filial-filter {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.filial-filter-label {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: #554239;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+}
+
+.filial-flags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.filial-flag {
+  background: #f0ebe8;
+  color: #554239;
+  border: 1.5px solid #e0cfc9;
+  padding: 0.3rem 0.85rem;
+  border-radius: 20px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+  width: auto;
+}
+
+.filial-flag:hover {
+  background: #e0d4ce;
+  border-color: #c9b8b0;
+}
+
+.filial-flag--active {
+  background: #e45e26;
+  color: white;
+  border-color: #e45e26;
+}
+
+.filial-flag--active:hover {
+  background: #c94b1b;
+  border-color: #c94b1b;
+}
+
+/* Barra de progresso de importação */
+.import-progress-wrap {
+  margin-bottom: 1rem;
+}
+
+.import-progress-label {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: #554239;
+  margin-bottom: 0.35rem;
+}
+
+.import-progress-track {
+  height: 8px;
+  background: #f0ebe8;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.import-progress-bar {
+  height: 100%;
+  background: linear-gradient(90deg, #e45e26, #f68c3d);
+  border-radius: 4px;
+  width: 0%;
+}
