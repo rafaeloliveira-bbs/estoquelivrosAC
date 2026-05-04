@@ -58,7 +58,7 @@ export default function Movimentacoes() {
   const [dataFim, setDataFim] = useState('');
   const [loadingHistorico, setLoadingHistorico] = useState(false);
 
-  // ── CSV import ───────────────────────────────────────────────────────────────
+  // ── CSV import – Entradas ────────────────────────────────────────────────────
   const isAdmin = getUserRole() === 'admin' || getUserRole() === 'gestor';
   const fileInputRef = useRef(null);
   const csvMenuRef = useRef(null);
@@ -69,10 +69,23 @@ export default function Movimentacoes() {
   const [resultadoImport, setResultadoImport] = useState(null);
   const [erroImport, setErroImport] = useState('');
 
+  // ── CSV import – Saídas ──────────────────────────────────────────────────────
+  const fileInputSaidasRef = useRef(null);
+  const csvMenuSaidasRef = useRef(null);
+  const [csvMenuSaidasAberto, setCsvMenuSaidasAberto] = useState(false);
+  const [previewSaidas, setPreviewSaidas] = useState(null);
+  const [selectedFileSaidas, setSelectedFileSaidas] = useState(null);
+  const [importandoSaidas, setImportandoSaidas] = useState(false);
+  const [resultadoImportSaidas, setResultadoImportSaidas] = useState(null);
+  const [erroImportSaidas, setErroImportSaidas] = useState('');
+
   useEffect(() => {
     const fechar = (e) => {
       if (csvMenuRef.current && !csvMenuRef.current.contains(e.target)) {
         setCsvMenuAberto(false);
+      }
+      if (csvMenuSaidasRef.current && !csvMenuSaidasRef.current.contains(e.target)) {
+        setCsvMenuSaidasAberto(false);
       }
     };
     document.addEventListener('mousedown', fechar);
@@ -234,6 +247,66 @@ export default function Movimentacoes() {
     setErroImport('');
   };
 
+  // ── CSV saídas handlers ──────────────────────────────────────────────────────
+  const handleBaixarModeloSaidas = async () => {
+    try {
+      const res = await movimentacoesAPI.templateHistoricoSaidas();
+      const url = URL.createObjectURL(new Blob([res.data]));
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'modelo_historico_saidas.csv';
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch {
+      setErroImportSaidas('Erro ao baixar o modelo CSV');
+    }
+  };
+
+  const handleFileSelectSaidas = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setSelectedFileSaidas(file);
+    setResultadoImportSaidas(null);
+    setErroImportSaidas('');
+    const formData = new FormData();
+    formData.append('file', file);
+    try {
+      const res = await movimentacoesAPI.previewHistoricoSaidas(formData);
+      setPreviewSaidas(res.data);
+    } catch (err) {
+      setErroImportSaidas(err.response?.data?.detail || 'Erro ao processar o arquivo CSV');
+      setSelectedFileSaidas(null);
+    }
+    e.target.value = '';
+  };
+
+  const handleConfirmarImportacaoSaidas = async () => {
+    if (!selectedFileSaidas) return;
+    setImportandoSaidas(true);
+    setErroImportSaidas('');
+    const formData = new FormData();
+    formData.append('file', selectedFileSaidas);
+    try {
+      const res = await movimentacoesAPI.importarHistoricoSaidas(formData);
+      setResultadoImportSaidas(res.data);
+      setPreviewSaidas(null);
+      setSelectedFileSaidas(null);
+      setDataInicio('');
+      setDataFim('');
+      setSecao('historico');
+    } catch (err) {
+      setErroImportSaidas(err.response?.data?.detail || 'Erro ao importar planilha');
+    } finally {
+      setImportandoSaidas(false);
+    }
+  };
+
+  const handleCancelarPreviewSaidas = () => {
+    setPreviewSaidas(null);
+    setSelectedFileSaidas(null);
+    setErroImportSaidas('');
+  };
+
   return (
     <div className="movimentacoes">
       <h1>Movimentações</h1>
@@ -250,10 +323,11 @@ export default function Movimentacoes() {
       {secao === 'registrar' && (
         <div className="form-container">
           {erroImport && <div className="alert-error">{erroImport}</div>}
+          {erroImportSaidas && <div className="alert-error">{erroImportSaidas}</div>}
 
           {resultadoImport && (
             <div className={`import-result ${resultadoImport.erros?.length ? 'import-result--warn' : 'import-result--ok'}`}>
-              <strong>Importação concluída:</strong> {resultadoImport.importados} entrada(s) registrada(s).
+              <strong>Importação de entradas concluída:</strong> {resultadoImport.importados} registro(s).
               {resultadoImport.avisos?.length > 0 && (
                 <><br /><strong>Avisos:</strong><ul>{resultadoImport.avisos.map((a, i) => <li key={i}>{a}</li>)}</ul></>
               )}
@@ -261,6 +335,19 @@ export default function Movimentacoes() {
                 <><br /><strong>Erros:</strong><ul>{resultadoImport.erros.map((e, i) => <li key={i}>{e}</li>)}</ul></>
               )}
               <button className="btn-close-result" onClick={() => setResultadoImport(null)}>✕</button>
+            </div>
+          )}
+
+          {resultadoImportSaidas && (
+            <div className={`import-result ${resultadoImportSaidas.erros?.length ? 'import-result--warn' : 'import-result--ok'}`}>
+              <strong>Importação de saídas concluída:</strong> {resultadoImportSaidas.importados} registro(s).
+              {resultadoImportSaidas.avisos?.length > 0 && (
+                <><br /><strong>Avisos:</strong><ul>{resultadoImportSaidas.avisos.map((a, i) => <li key={i}>{a}</li>)}</ul></>
+              )}
+              {resultadoImportSaidas.erros?.length > 0 && (
+                <><br /><strong>Erros:</strong><ul>{resultadoImportSaidas.erros.map((e, i) => <li key={i}>{e}</li>)}</ul></>
+              )}
+              <button className="btn-close-result" onClick={() => setResultadoImportSaidas(null)}>✕</button>
             </div>
           )}
 
@@ -321,7 +408,64 @@ export default function Movimentacoes() {
             </div>
           )}
 
-          {!previewEntradas && (
+          {previewSaidas && (
+            <div className="preview-section">
+              <h2>Pré-visualização — Histórico de Saídas</h2>
+              {previewSaidas.warnings?.length > 0 && (
+                <div className="warnings">
+                  <strong>Avisos:</strong>
+                  <ul>{previewSaidas.warnings.map((w, i) => <li key={i}>{w}</li>)}</ul>
+                </div>
+              )}
+              <div className="mapping-info">
+                <h3>Mapeamento de Colunas:</h3>
+                <div className="mapping-grid">
+                  {Object.entries(previewSaidas.column_mapping).map(([field, colName]) => (
+                    <div key={field} className={`mapping-item ${colName ? 'mapped' : 'unmapped'}`}>
+                      <strong>{FIELD_LABELS[field] || field}:</strong> {colName || 'Não encontrado'}
+                    </div>
+                  ))}
+                </div>
+              </div>
+              {previewSaidas.mapped_preview?.length > 0 && (
+                <div className="preview-table">
+                  <h3>Primeiras {previewSaidas.mapped_preview.length} linha(s) processadas:</h3>
+                  <table>
+                    <thead>
+                      <tr>
+                        {Object.keys(previewSaidas.mapped_preview[0]).map((f) => (
+                          <th key={f}>{FIELD_LABELS[f] || f}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {previewSaidas.mapped_preview.map((row, idx) => (
+                        <tr key={idx}>
+                          {Object.values(row).map((val, ci) => (
+                            <td key={ci} className={typeof val === 'string' && val.startsWith('Erro:') ? 'error-cell' : ''}>
+                              {val === null || val === undefined
+                                ? '-'
+                                : MOEDA_FIELDS.has(Object.keys(previewSaidas.mapped_preview[0])[ci]) && typeof val === 'number'
+                                  ? `R$ ${formatMoedaBR(val)}`
+                                  : String(val)}
+                            </td>
+                          ))}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+              <div className="preview-actions">
+                <button className="btn-primary" onClick={handleConfirmarImportacaoSaidas} disabled={importandoSaidas}>
+                  {importandoSaidas ? 'Importando...' : 'Confirmar Importação'}
+                </button>
+                <button className="btn-secondary" onClick={handleCancelarPreviewSaidas}>Cancelar</button>
+              </div>
+            </div>
+          )}
+
+          {!previewEntradas && !previewSaidas && (
             <div className="registrar-grid">
               {/* ── COMPRA ── */}
               <div className="registrar-col">
@@ -427,7 +571,27 @@ export default function Movimentacoes() {
 
               {/* ── VENDA ── */}
               <div className="registrar-col">
-                <h2>Venda</h2>
+                <div className="registrar-col-header">
+                  <h2>Venda</h2>
+                  {isAdmin && (
+                    <div className="csv-dropdown" ref={csvMenuSaidasRef}>
+                      <button
+                        className="btn-secondary"
+                        onClick={() => setCsvMenuSaidasAberto((v) => !v)}
+                        disabled={importandoSaidas}
+                      >
+                        {importandoSaidas ? 'Importando...' : 'Importar CSV ▾'}
+                      </button>
+                      {csvMenuSaidasAberto && (
+                        <div className="csv-menu">
+                          <button onClick={() => { handleBaixarModeloSaidas(); setCsvMenuSaidasAberto(false); }}>Baixar Modelo</button>
+                          <button onClick={() => { fileInputSaidasRef.current?.click(); setCsvMenuSaidasAberto(false); }}>Importar CSV</button>
+                        </div>
+                      )}
+                      <input ref={fileInputSaidasRef} type="file" accept=".csv" style={{ display: 'none' }} onChange={handleFileSelectSaidas} />
+                    </div>
+                  )}
+                </div>
 
                 <form onSubmit={handleSubmitVenda} className="form">
                   <div className="form-group">

@@ -45,6 +45,16 @@ export const movimentacoesAPI = {
     apiClient.post('/movimentacoes/historico-entradas/importar-csv', formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
     }),
+  templateHistoricoSaidas: () =>
+    apiClient.get('/movimentacoes/historico-saidas/template-csv', { responseType: 'blob' }),
+  previewHistoricoSaidas: (formData) =>
+    apiClient.post('/movimentacoes/historico-saidas/preview-csv', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    }),
+  importarHistoricoSaidas: (formData) =>
+    apiClient.post('/movimentacoes/historico-saidas/importar-csv', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    }),
 };
 
 export const relatoriosAPI = {

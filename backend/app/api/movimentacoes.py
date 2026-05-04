@@ -454,3 +454,245 @@ async def importar_historico_entradas_csv(
         f"Histórico entradas CSV: {importados} importados, {len(avisos)} avisos, {len(erros)} erros"
     )
     return {"importados": importados, "avisos": avisos, "erros": erros}
+
+
+# ─── Importação CSV – Histórico de Saídas ────────────────────────────────────
+
+# Mesmas colunas das entradas; a diferença está na lógica de importação.
+_COLUNAS_HISTORICO_SAIDAS = _COLUNAS_HISTORICO
+
+
+@router.get("/historico-saidas/template-csv")
+async def template_historico_saidas_csv(user=Depends(get_current_user)):
+    """Retorna o modelo CSV para importação do histórico de saídas (vendas)."""
+    output = io.StringIO()
+    writer = csv.DictWriter(output, fieldnames=_COLUNAS_HISTORICO_SAIDAS)
+    writer.writeheader()
+    writer.writerow({
+        "Data": "15/03/2024",
+        "Nº NF": "98765",
+        "Código do Item": "1001",
+        "Grade": "5o Ano",
+        "Título": "Exemplo de Livro",
+        "Valor Unitário": "39.90",
+        "Quantidade": "10",
+        "Valor Total": "399.00",
+        "Observação": "",
+        "ID Filial": "2",
+    })
+    output.seek(0)
+    return StreamingResponse(
+        iter([output.getvalue()]),
+        media_type="text/csv",
+        headers={"Content-Disposition": "attachment; filename=modelo_historico_saidas.csv"},
+    )
+
+
+@router.post("/historico-saidas/preview-csv")
+async def preview_historico_saidas_csv(
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    user=Depends(requer_role(["gestor", "admin"])),
+):
+    """Pré-visualiza o CSV de histórico de saídas antes da importação."""
+    content = await file.read()
+    try:
+        decoded = content.decode("utf-8-sig")
+    except UnicodeDecodeError:
+        decoded = content.decode("latin-1")
+
+    reader = csv.DictReader(io.StringIO(decoded))
+    fieldnames = reader.fieldnames or []
+    col_map = _mapear_colunas_historico(fieldnames)
+
+    preview_rows = []
+    for i, row in enumerate(reader):
+        if i >= 5:
+            break
+        preview_rows.append(row)
+
+    warnings = []
+    if not col_map["codigo_item"]:
+        warnings.append("Coluna obrigatória 'Código do Item' não encontrada")
+    if not col_map["quantidade"]:
+        warnings.append("Coluna obrigatória 'Quantidade' não encontrada")
+    if not col_map["valor_unitario"]:
+        warnings.append("Coluna obrigatória 'Valor Unitário' não encontrada")
+
+    def _get(row, field):
+        col = col_map.get(field)
+        return row.get(col, "").strip() if col else ""
+
+    mapped_preview = []
+    for row in preview_rows:
+        mapped = {}
+        for field in ("data", "nf", "codigo_item", "grade", "titulo",
+                      "valor_unitario", "quantidade", "valor_total", "observacao", "filial_id"):
+            raw = _get(row, field)
+            if field == "data" and raw:
+                try:
+                    datetime.strptime(raw, "%d/%m/%Y")
+                    mapped[field] = raw
+                except ValueError:
+                    mapped[field] = f"Erro: '{raw}' inválido (esperado DD/MM/AAAA)"
+            elif field == "codigo_item" and raw:
+                try:
+                    mapped[field] = int(raw)
+                except ValueError:
+                    mapped[field] = f"Erro: '{raw}' não é numérico"
+            elif field == "quantidade" and raw:
+                try:
+                    mapped[field] = _limpar_quantidade(raw)
+                except (ValueError, ArithmeticError):
+                    mapped[field] = f"Erro: '{raw}' não é numérico"
+            elif field in ("valor_unitario", "valor_total") and raw:
+                try:
+                    mapped[field] = float(_limpar_monetario(raw))
+                except (ValueError, InvalidOperation):
+                    mapped[field] = f"Erro: '{raw}' não é numérico"
+            else:
+                mapped[field] = raw or None
+        mapped_preview.append(mapped)
+
+    return {
+        "fieldnames": fieldnames,
+        "column_mapping": col_map,
+        "preview_rows": preview_rows,
+        "mapped_preview": mapped_preview,
+        "warnings": warnings,
+        "total_rows": len(preview_rows),
+    }
+
+
+@router.post("/historico-saidas/importar-csv")
+async def importar_historico_saidas_csv(
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    user=Depends(requer_role(["gestor", "admin"])),
+):
+    """Importa histórico de saídas (vendas) a partir de um arquivo CSV."""
+    content = await file.read()
+    try:
+        decoded = content.decode("utf-8-sig")
+    except UnicodeDecodeError:
+        decoded = content.decode("latin-1")
+
+    reader = csv.DictReader(io.StringIO(decoded))
+    fieldnames = reader.fieldnames or []
+    col_map = _mapear_colunas_historico(fieldnames)
+    logger.info(f"Importação histórico saídas — cabeçalhos: {fieldnames}")
+
+    def _get(row, field):
+        col = col_map.get(field)
+        return row.get(col, "").strip() if col else ""
+
+    importados = 0
+    avisos: list[str] = []
+    erros: list[str] = []
+
+    for i, row in enumerate(reader, start=2):
+        try:
+            # Código do Item — obrigatório
+            codigo_raw = _get(row, "codigo_item")
+            if not codigo_raw:
+                erros.append(f"Linha {i}: 'Código do Item' é obrigatório")
+                continue
+            try:
+                codigo_item = int(codigo_raw)
+            except ValueError:
+                erros.append(f"Linha {i}: 'Código do Item' deve ser numérico (recebido: '{codigo_raw}')")
+                continue
+
+            # Resolve filial_id
+            filial_csv_raw = _get(row, "filial_id")
+            filial_id_row = user["filial_id"]
+            if filial_csv_raw:
+                try:
+                    fid = int(filial_csv_raw)
+                    filial_obj = obter_filial_por_id(db, fid)
+                except ValueError:
+                    filial_obj = obter_filial_por_nome(db, filial_csv_raw)
+                    fid = filial_obj.id if filial_obj else None
+                if not filial_obj:
+                    avisos.append(f"Linha {i}: Filial '{filial_csv_raw}' não encontrada, usando filial do usuário")
+                else:
+                    filial_id_row = fid
+
+            livro = obter_livro_por_codigo(db, codigo_item, filial_id_row)
+            if not livro:
+                erros.append(f"Linha {i}: Item '{codigo_item}' não encontrado na filial {filial_id_row}")
+                continue
+
+            # Validações opcionais
+            grade_csv = _get(row, "grade")
+            if grade_csv and livro.grade and grade_csv.strip().lower() != livro.grade.strip().lower():
+                avisos.append(
+                    f"Linha {i}: Grade do CSV ('{grade_csv}') difere do cadastro ('{livro.grade}') — importado assim mesmo"
+                )
+
+            titulo_csv = _get(row, "titulo")
+            if titulo_csv and titulo_csv.strip().lower() != livro.titulo.strip().lower():
+                avisos.append(
+                    f"Linha {i}: Título do CSV ('{titulo_csv}') difere do cadastro ('{livro.titulo}') — importado assim mesmo"
+                )
+
+            # Data
+            data_str = _get(row, "data")
+            data_venda = None
+            if data_str:
+                try:
+                    data_venda = datetime.strptime(data_str, "%d/%m/%Y").date()
+                except ValueError:
+                    erros.append(f"Linha {i}: Data inválida '{data_str}' (esperado DD/MM/AAAA)")
+                    continue
+
+            # Quantidade — obrigatório
+            qtd_raw = _get(row, "quantidade")
+            if not qtd_raw:
+                erros.append(f"Linha {i}: 'Quantidade' é obrigatório")
+                continue
+            try:
+                quantidade = _limpar_quantidade(qtd_raw)
+                if quantidade <= 0:
+                    raise ValueError()
+            except (ValueError, ArithmeticError):
+                erros.append(f"Linha {i}: Quantidade inválida '{qtd_raw}' (deve ser inteiro > 0)")
+                continue
+
+            # Valor Unitário — obrigatório
+            valor_raw = _get(row, "valor_unitario")
+            if not valor_raw:
+                erros.append(f"Linha {i}: 'Valor Unitário' é obrigatório")
+                continue
+            try:
+                valor_unitario = Decimal(_limpar_monetario(valor_raw))
+                if valor_unitario < 0:
+                    raise InvalidOperation()
+            except (InvalidOperation, Exception):
+                erros.append(f"Linha {i}: Valor Unitário inválido '{valor_raw}'")
+                continue
+
+            nf_raw = _get(row, "nf") or None
+            observacao = _get(row, "observacao") or None
+
+            registrar_venda(
+                db,
+                livro_id=livro.id,
+                quantidade=quantidade,
+                usuario_id=user["user_id"],
+                filial_id=filial_id_row,
+                documento_referencia=nf_raw,
+                observacoes=observacao,
+                preco_venda=valor_unitario,
+                data_venda=data_venda,
+            )
+            importados += 1
+
+        except Exception as e:
+            db.rollback()
+            erros.append(f"Linha {i}: {str(e)}")
+
+    logger.info(
+        f"Histórico saídas CSV: {importados} importados, {len(avisos)} avisos, {len(erros)} erros"
+    )
+    return {"importados": importados, "avisos": avisos, "erros": erros}
