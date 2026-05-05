@@ -28,7 +28,7 @@ def obter_usuario_por_email(db: Session, email: str):
 
 def listar_usuarios(db: Session, filial_id: int = None, skip: int = 0, limit: int = 100):
     """List users"""
-    query = db.query(Usuario).filter(Usuario.ativo == True)
+    query = db.query(Usuario)
     if filial_id:
         query = query.filter(Usuario.filial_id == filial_id)
     return query.offset(skip).limit(limit).all()

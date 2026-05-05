@@ -656,11 +656,6 @@ export default function Movimentacoes() {
                     <input type="date" value={dataVenda} onChange={(e) => setDataVenda(e.target.value)} required />
                   </div>
 
-                  <div className="form-group">
-                    <label>Observações</label>
-                    <input type="text" value={obsVenda} onChange={(e) => setObsVenda(e.target.value)} placeholder="Opcional" />
-                  </div>
-
                   <div className="form-group" style={{ position: 'relative' }}>
                     <label>Código do Item</label>
                     <input
@@ -679,9 +674,11 @@ export default function Movimentacoes() {
                     {lookupErrVenda && <span className="lookup-err">{lookupErrVenda}</span>}
                   </div>
 
-                  <div className="form-group">
-                    <label>Título</label>
-                    <input type="text" value={tituloVenda} readOnly placeholder="—" className="input-readonly" />
+                  <div className="form-row-2">
+                    <div className="form-group">
+                      <label>Título</label>
+                      <input type="text" value={tituloVenda} readOnly placeholder="—" className="input-readonly" />
+                    </div>
                   </div>
 
                   <div className="form-row-3">
@@ -704,6 +701,11 @@ export default function Movimentacoes() {
                       <label>Valor Total</label>
                       <input type="text" value={totalVenda > 0 ? `R$ ${formatMoedaBR(totalVenda)}` : ''} readOnly placeholder="—" className="input-readonly" />
                     </div>
+                  </div>
+
+                  <div className="form-group">
+                    <label>Observação</label>
+                    <input type="text" value={obsVenda} onChange={(e) => setObsVenda(e.target.value)} placeholder="Opcional" />
                   </div>
 
                   {msgVenda && <div className="success">{msgVenda}</div>}
