@@ -28,7 +28,15 @@ export default function Login() {
       setUser(user);
       navigate('/');
     } catch (err) {
-      setError('Email ou senha incorretos');
+      if (err.response?.status === 401) {
+        setError('Email ou senha incorretos');
+      } else if (err.response?.status === 422) {
+        setError('Email inválido');
+      } else if (err.response) {
+        setError(`Erro do servidor (${err.response.status})`);
+      } else {
+        setError('Não foi possível conectar ao servidor');
+      }
     } finally {
       setLoading(false);
     }

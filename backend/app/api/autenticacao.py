@@ -197,8 +197,8 @@ async def refresh(
 @router.post("/logout")
 async def logout(response: Response):
     """Apaga os cookies de autenticação."""
-    response.delete_cookie("access_token")
-    response.delete_cookie("refresh_token")
+    response.delete_cookie("access_token", **_COOKIE_OPTS)
+    response.delete_cookie("refresh_token", **_COOKIE_OPTS)
     return {"ok": True}
 
 
