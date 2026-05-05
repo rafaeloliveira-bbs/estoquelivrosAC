@@ -18,7 +18,9 @@ router = APIRouter(prefix="/auth", tags=["autenticação"])
 
 _COOKIE_OPTS = dict(
     httponly=True,
-    samesite="lax",
+    # SameSite=None é necessário para requests cross-origin (Vercel + backend externo);
+    # requer Secure=True. Em dev (COOKIE_SECURE=False) usa Lax para funcionar sem HTTPS.
+    samesite="none" if settings.COOKIE_SECURE else "lax",
     secure=settings.COOKIE_SECURE,
 )
 

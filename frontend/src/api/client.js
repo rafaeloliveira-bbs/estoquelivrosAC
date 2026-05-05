@@ -12,13 +12,17 @@ const apiClient = axios.create({
   },
 });
 
-// Handle 401 — limpa dados do usuário e redireciona para login
+// Handle 401 — redireciona para login apenas se havia sessão ativa
+// (evita reload no próprio formulário de login quando a senha está errada)
 apiClient.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
+      const hadSession = !!localStorage.getItem('user');
       localStorage.removeItem('user');
-      window.location.href = '/login';
+      if (hadSession) {
+        window.location.href = '/login';
+      }
     }
     return Promise.reject(error);
   }
