@@ -1,6 +1,5 @@
 {
   "rewrites": [
-    { "source": "/api/:path*", "destination": "https://estoquelivros-ac.vercel.app/:path*" },
     { "source": "/(.*)", "destination": "/index.html" }
   ]
 }
