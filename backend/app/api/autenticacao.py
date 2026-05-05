@@ -71,11 +71,14 @@ async def _autenticar_usuario(email: str, senha: str, db: Session) -> dict:
         registros = db.query(UsuarioFilial).filter(UsuarioFilial.usuario_id == usuario.id).all()
         if not registros:
             try:
-                db.add(UsuarioFilial(usuario_id=usuario.id, filial_id=usuario.filial_id))
+                todas = db.query(Filial).all()
+                for f in todas:
+                    db.add(UsuarioFilial(usuario_id=usuario.id, filial_id=f.id))
                 db.commit()
+                filial_ids = [f.id for f in todas] or [usuario.filial_id]
             except Exception:
                 db.rollback()
-            filial_ids = [usuario.filial_id]
+                filial_ids = [usuario.filial_id]
         else:
             filial_ids = [uf.filial_id for uf in registros]
 
@@ -217,5 +220,9 @@ async def registrar(
         )
 
     novo_usuario = criar_usuario(db, usuario)
-    logger.info(f"New user registered: {usuario.email}")
+    filiais = db.query(Filial).all()
+    for f in filiais:
+        db.add(UsuarioFilial(usuario_id=novo_usuario.id, filial_id=f.id))
+    db.commit()
+    logger.info(f"New user registered: {usuario.email} — vinculado a {len(filiais)} filial(is)")
     return novo_usuario

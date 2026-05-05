@@ -85,7 +85,7 @@ def listar_livros_com_estoque(
             | Livro.editora.ilike(t)
         )
 
-    rows = query.order_by(Livro.filial_id, Livro.codigo_item.nullsfirst()).offset(skip).limit(limit).all()
+    rows = query.order_by(Livro.codigo_item.nullsfirst(), Livro.filial_id).offset(skip).limit(limit).all()
     return [
         {
             "id": l.id,

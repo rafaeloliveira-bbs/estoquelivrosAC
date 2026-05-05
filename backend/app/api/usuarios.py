@@ -7,6 +7,7 @@ from app.crud.usuario import (
     atualizar_usuario, deletar_usuario
 )
 from app.models.usuario_filial import UsuarioFilial
+from app.models.filial import Filial
 from app.auth.permissions import get_current_user, requer_admin
 from app.config import logger
 
@@ -22,7 +23,11 @@ async def criar_novo_usuario(
     if usuario.filial_id is None:
         usuario.filial_id = user["filial_id"]
     novo_usuario = criar_usuario(db, usuario)
-    logger.info(f"Novo usuário criado: {usuario.email}")
+    filiais = db.query(Filial).all()
+    for f in filiais:
+        db.add(UsuarioFilial(usuario_id=novo_usuario.id, filial_id=f.id))
+    db.commit()
+    logger.info(f"Novo usuário criado: {usuario.email} — vinculado a {len(filiais)} filial(is)")
     return novo_usuario
 
 @router.get("/", response_model=list[UsuarioResposta])

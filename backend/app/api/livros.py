@@ -344,7 +344,7 @@ async def obter_por_codigo(
     db: Session = Depends(get_db),
     user=Depends(get_current_user),
 ):
-    livro = obter_livro_por_codigo(db, codigo_item, user["filial_ids"])
+    livro = obter_livro_por_codigo(db, codigo_item, user["filial_id"])
     if not livro:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Item não encontrado")
     return livro
