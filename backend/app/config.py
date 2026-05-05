@@ -6,25 +6,33 @@ import os
 class Settings(BaseSettings):
     # Database
     DATABASE_URL: str = "postgresql://postgres:postgres@localhost:5432/estoque_db"
-    
-    # Security
-    SECRET_KEY: str = "MaropgyqjYo_VW0ja8fGP3aqYagGV2b3599AcWiy3e8"  # Gerada com secrets.token_urlsafe(32)
+
+    # Security — SECRET_KEY deve estar no .env; sem valor padrão seguro aqui
+    SECRET_KEY: str
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60
     REFRESH_TOKEN_EXPIRE_DAYS: int = 7
-    
+    COOKIE_SECURE: bool = False  # True em produção HTTPS
+
+    # CORS — origens separadas por vírgula no .env
+    CORS_ORIGINS: str = "http://localhost:3000,http://127.0.0.1:3000,http://localhost:5173,http://127.0.0.1:5173"
+
     # API
     DEBUG: bool = False
     API_HOST: str = "0.0.0.0"
     API_PORT: int = 8000
-    
+
     # Logging
     LOG_LEVEL: str = "INFO"
     LOG_FILE: str = "logs/estoque.log"
-    
+
     class Config:
         env_file = ".env"
         case_sensitive = True
+
+    @property
+    def cors_origins_list(self) -> list[str]:
+        return [o.strip() for o in self.CORS_ORIGINS.split(",") if o.strip()]
 
 settings = Settings()
 

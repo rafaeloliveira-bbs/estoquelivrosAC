@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.exception_handlers import http_exception_handler
@@ -9,6 +9,7 @@ from slowapi.middleware import SlowAPIMiddleware
 from app.config import settings, logger
 from app.database import init_db
 from app.api import autenticacao, livros, movimentacoes, relatorios, usuarios, categorias, filiais
+from app.auth.permissions import requer_admin
 
 limiter = Limiter(key_func=get_remote_address)
 
@@ -26,16 +27,7 @@ app.add_middleware(SlowAPIMiddleware)
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:3000",
-        "http://127.0.0.1:3000",
-        "http://localhost:3001",
-        "http://127.0.0.1:3001",
-        "http://localhost:5173",
-        "http://127.0.0.1:5173",
-        "http://localhost:8000",
-        "http://127.0.0.1:8000",
-    ],
+    allow_origins=settings.cors_origins_list,
     allow_origin_regex=r"https://.*\.vercel\.app",
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
@@ -98,8 +90,8 @@ async def startup_event():
         _migrar_colunas_livro()
     except Exception as e:
         logger.error(f"init_db falhou: {e}")
-    if settings.SECRET_KEY == "dev-insecure-change-in-production":
-        logger.warning("ATENÇÃO: SECRET_KEY padrão em uso — altere antes de ir para produção!")
+    if len(settings.SECRET_KEY) < 32:
+        logger.warning("ATENÇÃO: SECRET_KEY muito curta — use secrets.token_urlsafe(48) para gerar uma chave segura!")
     logger.info("Aplicação iniciada")
     logger.info(f"Debug mode: {settings.DEBUG}")
 
@@ -126,7 +118,9 @@ async def health():
 
 
 @app.get("/debug-db", tags=["health"])
-async def debug_db():
+async def debug_db(user=Depends(requer_admin())):
+    if not settings.DEBUG:
+        raise HTTPException(status_code=404, detail="Not found")
     from sqlalchemy import text
     from app.database import engine
     try:

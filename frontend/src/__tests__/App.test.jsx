@@ -26,7 +26,7 @@ describe('App — roteamento', () => {
   });
 
   it('exibe Dashboard na rota / quando autenticado', () => {
-    localStorage.setItem('token', 'token-valido');
+    localStorage.setItem('user', JSON.stringify({ id: 1, email: 'a@a.com', role: 'gestor', filial_id: 1, filial_ids: [1] }));
     render(<App />);
     expect(screen.getByText('Página do Dashboard')).toBeInTheDocument();
   });

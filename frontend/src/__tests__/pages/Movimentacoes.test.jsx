@@ -1,89 +1,113 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import Movimentacoes from '../../pages/Movimentacoes';
-import { movimentacoesAPI } from '../../api/endpoints';
 
+// vi.mock é hoisted — não pode referenciar variáveis definidas no módulo
 vi.mock('../../api/endpoints', () => ({
   movimentacoesAPI: {
     registrarVenda: vi.fn(),
     registrarCompra: vi.fn(),
   },
-  livrosAPI: {},
+  livrosAPI: {
+    listarComEstoque: vi.fn().mockResolvedValue({ data: [] }),
+    porCodigo: vi.fn().mockResolvedValue({ data: { id: 1, titulo: 'Livro Teste', grade: '5o', codigo_item: 1001 } }),
+  },
+  filiaisAPI: { listar: vi.fn().mockResolvedValue({ data: [] }) },
 }));
+
+import { movimentacoesAPI, livrosAPI } from '../../api/endpoints';
+const LIVRO_MOCK = { id: 1, titulo: 'Livro Teste', grade: '5o', codigo_item: 1001 };
 
 describe('Movimentacoes', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    livrosAPI.porCodigo.mockResolvedValue({ data: LIVRO_MOCK });
   });
 
-  it('exibe aba Venda selecionada por padrão', () => {
+  it('exibe seção Registrar ativa por padrão com formulários de Compra e Venda', () => {
     render(<Movimentacoes />);
-    expect(screen.getByRole('button', { name: 'Venda' })).toHaveClass('active');
-    expect(screen.getByRole('button', { name: 'Compra' })).not.toHaveClass('active');
+    // A aba ativa tem classe "active"
+    const abaRegistrar = screen.getAllByRole('button').find(
+      (btn) => btn.textContent.trim() === 'Registrar'
+    );
+    expect(abaRegistrar).toHaveClass('active');
+    expect(screen.getByRole('heading', { name: /compra/i })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: /venda/i })).toBeInTheDocument();
   });
 
-  it('troca para aba Compra ao clicar', async () => {
+  it('exibe botões de submit corretos em cada formulário', () => {
     render(<Movimentacoes />);
-    await userEvent.click(screen.getByRole('button', { name: 'Compra' }));
-    expect(screen.getByRole('button', { name: 'Compra' })).toHaveClass('active');
-    expect(screen.getByRole('button', { name: 'Venda' })).not.toHaveClass('active');
+    expect(screen.getByRole('button', { name: /registrar compra/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /registrar venda/i })).toBeInTheDocument();
   });
 
-  it('exibe campos extras de Preço, Lote e Fornecedor ao selecionar Compra', async () => {
+  it('troca para seção Histórico ao clicar na aba', async () => {
     render(<Movimentacoes />);
-    await userEvent.click(screen.getByRole('button', { name: 'Compra' }));
-    expect(screen.getByLabelText(/preço unitário/i)).toBeInTheDocument();
-    expect(screen.getByLabelText(/número do lote/i)).toBeInTheDocument();
-    expect(screen.getByLabelText(/fornecedor/i)).toBeInTheDocument();
+    const abaHistorico = screen.getAllByRole('button').find(
+      (btn) => btn.textContent.trim() === 'Histórico'
+    );
+    await userEvent.click(abaHistorico);
+    expect(abaHistorico).toHaveClass('active');
+    expect(screen.queryByRole('heading', { name: /compra/i })).not.toBeInTheDocument();
   });
 
-  it('registra venda com sucesso e limpa o formulário', async () => {
-    movimentacoesAPI.registrarVenda.mockResolvedValueOnce({ data: {} });
-    const user = userEvent.setup();
-
-    render(<Movimentacoes />);
-    await user.type(screen.getByLabelText(/id do livro/i), '1');
-    await user.type(screen.getByLabelText(/quantidade/i), '3');
-    await user.click(screen.getByRole('button', { name: 'Registrar venda' }));
-
-    await waitFor(() => {
-      expect(screen.getByText('Venda registrada com sucesso!')).toBeInTheDocument();
-      expect(screen.getByLabelText(/id do livro/i)).toHaveValue(null);
-      expect(screen.getByLabelText(/quantidade/i)).toHaveValue(null);
-    });
-  });
-
-  it('registra compra com sucesso', async () => {
+  it('registra compra com sucesso e exibe mensagem', async () => {
     movimentacoesAPI.registrarCompra.mockResolvedValueOnce({ data: {} });
-    const user = userEvent.setup();
-
     render(<Movimentacoes />);
-    await user.click(screen.getByRole('button', { name: 'Compra' }));
-    await user.type(screen.getByLabelText(/id do livro/i), '2');
-    await user.type(screen.getByLabelText(/quantidade/i), '10');
-    await user.type(screen.getByLabelText(/preço unitário/i), '50');
-    await user.type(screen.getByLabelText(/número do lote/i), 'LOTE-003');
-    await user.click(screen.getByRole('button', { name: 'Registrar compra' }));
+
+    // Preenche o código do item (primeiro campo "Ex: 1001")
+    const [inputCodigoCompra] = screen.getAllByPlaceholderText('Ex: 1001');
+    await userEvent.type(inputCodigoCompra, '1001');
+    fireEvent.blur(inputCodigoCompra); // dispara lookup
+
+    await waitFor(() => expect(livrosAPI.porCodigo).toHaveBeenCalled());
+
+    // Valor unitário e quantidade no form de compra
+    const [inputValorCompra] = screen.getAllByPlaceholderText('0,00');
+    await userEvent.type(inputValorCompra, '29,90');
+    const [inputQtdCompra] = screen.getAllByRole('spinbutton');
+    await userEvent.type(inputQtdCompra, '10');
+
+    await userEvent.click(screen.getByRole('button', { name: /registrar compra/i }));
 
     await waitFor(() => {
       expect(screen.getByText('Compra registrada com sucesso!')).toBeInTheDocument();
     });
   });
 
-  it('exibe mensagem de erro retornada pela API', async () => {
-    movimentacoesAPI.registrarVenda.mockRejectedValueOnce({
-      response: { data: { detail: 'Estoque insuficiente' } },
-    });
-    const user = userEvent.setup();
-
+  it('exibe erro de validação ao submeter venda sem lookup de código', async () => {
     render(<Movimentacoes />);
-    await user.type(screen.getByLabelText(/id do livro/i), '1');
-    await user.type(screen.getByLabelText(/quantidade/i), '999');
-    await user.click(screen.getByRole('button', { name: 'Registrar venda' }));
+
+    // Submete o form diretamente sem preencher nada — livroIdVenda permanece null
+    const formVenda = screen.getByRole('button', { name: /registrar venda/i }).closest('form');
+    fireEvent.submit(formVenda);
 
     await waitFor(() => {
-      expect(screen.getByText('Estoque insuficiente')).toBeInTheDocument();
+      expect(screen.getByText(/pesquise um item pelo código/i)).toBeInTheDocument();
+    });
+  });
+
+  it('registra venda com sucesso após lookup', async () => {
+    movimentacoesAPI.registrarVenda.mockResolvedValueOnce({ data: {} });
+    render(<Movimentacoes />);
+
+    // Segundo campo "Ex: 1001" é o do form de venda
+    const [, inputCodigoVenda] = screen.getAllByPlaceholderText('Ex: 1001');
+    await userEvent.type(inputCodigoVenda, '1001');
+    fireEvent.blur(inputCodigoVenda);
+
+    await waitFor(() => expect(livrosAPI.porCodigo).toHaveBeenCalled());
+
+    const [, inputValorVenda] = screen.getAllByPlaceholderText('0,00');
+    await userEvent.type(inputValorVenda, '39,90');
+    const [, inputQtdVenda] = screen.getAllByRole('spinbutton');
+    await userEvent.type(inputQtdVenda, '5');
+
+    await userEvent.click(screen.getByRole('button', { name: /registrar venda/i }));
+
+    await waitFor(() => {
+      expect(screen.getByText('Venda registrada com sucesso!')).toBeInTheDocument();
     });
   });
 });

@@ -16,11 +16,13 @@ vi.mock('react-router-dom', async (importOriginal) => ({
   useNavigate: () => mockNavigate,
 }));
 
+const USER_MOCK = { id: 1, email: 'admin@estoque.com', role: 'admin', filial_id: 1, filial_ids: [1] };
+
 describe('Login', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     localStorage.clear();
-    useAuthStore.setState({ user: null, token: null });
+    useAuthStore.setState({ user: null });
   });
 
   it('renderiza campos de email e senha', () => {
@@ -35,9 +37,9 @@ describe('Login', () => {
     expect(screen.getByLabelText(/senha/i)).toHaveValue('');
   });
 
-  it('armazena tokens e redireciona para / após login bem-sucedido', async () => {
+  it('armazena dados do usuário no localStorage e redireciona para / após login bem-sucedido', async () => {
     authAPI.login.mockResolvedValueOnce({
-      data: { access_token: 'token-123', refresh_token: 'refresh-456' },
+      data: { user: USER_MOCK, access_token: 'token-123', expires_in: 3600 },
     });
 
     render(<MemoryRouter><Login /></MemoryRouter>);
@@ -46,8 +48,11 @@ describe('Login', () => {
     await userEvent.click(screen.getByRole('button', { name: /entrar/i }));
 
     await waitFor(() => {
-      expect(localStorage.getItem('token')).toBe('token-123');
-      expect(localStorage.getItem('refreshToken')).toBe('refresh-456');
+      const stored = JSON.parse(localStorage.getItem('user'));
+      expect(stored.email).toBe('admin@estoque.com');
+      expect(stored.role).toBe('admin');
+      // JWT não deve estar no localStorage
+      expect(localStorage.getItem('token')).toBeNull();
       expect(mockNavigate).toHaveBeenCalledWith('/');
     });
   });

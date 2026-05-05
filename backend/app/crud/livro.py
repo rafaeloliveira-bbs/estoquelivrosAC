@@ -56,7 +56,7 @@ def pesquisar_livros(db: Session, filial_id, termo: str, skip: int = 0, limit: i
     return query.offset(skip).limit(limit).all()
 
 def listar_livros_com_estoque(
-    db: Session, filial_id, termo: str = None, skip: int = 0, limit: int = 100
+    db: Session, filial_id, termo: str = None, skip: int = 0, limit: int = 2000
 ) -> list[dict]:
     estoque_sub = (
         db.query(
@@ -85,7 +85,7 @@ def listar_livros_com_estoque(
             | Livro.editora.ilike(t)
         )
 
-    rows = query.offset(skip).limit(limit).all()
+    rows = query.order_by(Livro.filial_id, Livro.codigo_item.nullsfirst()).offset(skip).limit(limit).all()
     return [
         {
             "id": l.id,

@@ -1,7 +1,5 @@
 import csv
 import io
-import re
-import unicodedata
 from datetime import date, datetime
 from decimal import Decimal, InvalidOperation
 from fastapi import APIRouter, Depends, HTTPException, status, Query, UploadFile, File
@@ -14,6 +12,10 @@ from app.crud.livro import obter_livro_por_id, obter_livro_por_codigo
 from app.crud.filial import obter_filial_por_id, obter_filial_por_nome
 from app.auth.permissions import get_current_user, requer_role
 from app.config import logger
+from app.utils.csv_parsing import (
+    decodificar_csv, mapear_colunas_historico, mapear_colunas_historico_saidas,
+    limpar_monetario, limpar_quantidade,
+)
 
 router = APIRouter(prefix="/movimentacoes", tags=["movimentações"])
 
@@ -149,69 +151,6 @@ _COLUNAS_HISTORICO = [
 ]
 
 
-def _limpar_monetario(raw: str) -> str:
-    """Remove R$, espaços e normaliza separadores decimais/milhar."""
-    s = re.sub(r'[Rr]\$\s*', '', raw).strip()
-    if ',' in s and '.' in s:
-        # formato BR: "1.234,56" → "1234.56"
-        s = s.replace('.', '').replace(',', '.')
-    else:
-        # só vírgula decimal: "29,90" → "29.90"
-        s = s.replace(',', '.')
-    return s
-
-
-def _limpar_quantidade(raw: str) -> int:
-    """Converte para int aceitando "50", "50.0", "50,0", "1.000"."""
-    s = raw.strip()
-    if ',' in s and '.' in s:
-        last_comma, last_dot = s.rfind(','), s.rfind('.')
-        if last_comma > last_dot:
-            s = s.replace('.', '').replace(',', '.')
-        else:
-            s = s.replace(',', '')
-    else:
-        s = s.replace(',', '.')
-    return int(float(s))
-
-
-def _sem_acento(s: str) -> str:
-    """Minúsculas sem acentos para comparação insensível a codificação."""
-    return ''.join(
-        c for c in unicodedata.normalize('NFD', s.lower().strip())
-        if unicodedata.category(c) != 'Mn'
-    )
-
-
-def _mapear_colunas_historico(fieldnames: list[str]) -> dict:
-    col_map = {k: None for k in (
-        "data", "nf", "codigo_item", "grade", "titulo",
-        "valor_unitario", "quantidade", "valor_total", "observacao",
-    )}
-    for col in fieldnames:
-        c = _sem_acento(col)
-        if c in ("data", "data entrada", "data de entrada"):
-            col_map["data"] = col
-        elif c in ("nº nf", "n nf", "nf", "nota fiscal", "numero nf", "n da nf",
-                   "num nf", "n. nf", "numero da nf", "n nota", "no nf", "nº nota"):
-            col_map["nf"] = col
-        elif c in ("codigo do item", "codigo do item", "codigo", "item",
-                   "cod. item", "cod item"):
-            col_map["codigo_item"] = col
-        elif c == "grade":
-            col_map["grade"] = col
-        elif c in ("titulo",):
-            col_map["titulo"] = col
-        elif c in ("valor unitario", "preco unitario", "valor unit",
-                   "valor unit.", "vl. unit.", "vlr unitario", "preco unit.", "valor un."):
-            col_map["valor_unitario"] = col
-        elif c in ("quantidade", "qtd", "qty", "qnt", "qtde"):
-            col_map["quantidade"] = col
-        elif c in ("valor total", "total", "vl. total", "vlr total", "valor tot."):
-            col_map["valor_total"] = col
-        elif c in ("observacao", "obs", "obs.", "observacoes"):
-            col_map["observacao"] = col
-    return col_map
 
 
 @router.get("/historico-entradas/template-csv")
@@ -247,14 +186,11 @@ async def preview_historico_entradas_csv(
 ):
     """Pré-visualiza o CSV de histórico de entradas antes da importação."""
     content = await file.read()
-    try:
-        decoded = content.decode("utf-8-sig")
-    except UnicodeDecodeError:
-        decoded = content.decode("latin-1")
+    decoded = decodificar_csv(content)
 
     reader = csv.DictReader(io.StringIO(decoded))
     fieldnames = reader.fieldnames or []
-    col_map = _mapear_colunas_historico(fieldnames)
+    col_map = mapear_colunas_historico(fieldnames)
 
     preview_rows = []
     for i, row in enumerate(reader):
@@ -293,12 +229,12 @@ async def preview_historico_entradas_csv(
                     mapped[field] = f"Erro: '{raw}' não é numérico"
             elif field in ("quantidade",) and raw:
                 try:
-                    mapped[field] = _limpar_quantidade(raw)
+                    mapped[field] = limpar_quantidade(raw)
                 except (ValueError, ArithmeticError):
                     mapped[field] = f"Erro: '{raw}' não é numérico"
             elif field in ("valor_unitario", "valor_total") and raw:
                 try:
-                    mapped[field] = float(_limpar_monetario(raw))
+                    mapped[field] = float(limpar_monetario(raw))
                 except (ValueError, InvalidOperation):
                     mapped[field] = f"Erro: '{raw}' não é numérico"
             else:
@@ -326,14 +262,11 @@ async def importar_historico_entradas_csv(
     filial_id_efetivo = filial_id if filial_id is not None else user["filial_id"]
 
     content = await file.read()
-    try:
-        decoded = content.decode("utf-8-sig")
-    except UnicodeDecodeError:
-        decoded = content.decode("latin-1")
+    decoded = decodificar_csv(content)
 
     reader = csv.DictReader(io.StringIO(decoded))
     fieldnames = reader.fieldnames or []
-    col_map = _mapear_colunas_historico(fieldnames)
+    col_map = mapear_colunas_historico(fieldnames)
     logger.info(f"Importação histórico entradas — filial={filial_id_efetivo}, cabeçalhos: {fieldnames}")
 
     def _get(row, field):
@@ -392,7 +325,7 @@ async def importar_historico_entradas_csv(
                 erros.append(f"Linha {i}: 'Quantidade' é obrigatório")
                 continue
             try:
-                quantidade = _limpar_quantidade(qtd_raw)
+                quantidade = limpar_quantidade(qtd_raw)
                 if quantidade <= 0:
                     raise ValueError()
             except (ValueError, ArithmeticError):
@@ -405,7 +338,7 @@ async def importar_historico_entradas_csv(
                 erros.append(f"Linha {i}: 'Valor Unitário' é obrigatório")
                 continue
             try:
-                valor_unitario = Decimal(_limpar_monetario(valor_raw))
+                valor_unitario = Decimal(limpar_monetario(valor_raw))
                 if valor_unitario < 0:
                     raise InvalidOperation()
             except (InvalidOperation, Exception):
@@ -448,31 +381,6 @@ _COLUNAS_HISTORICO_SAIDAS = [
 ]
 
 
-def _mapear_colunas_historico_saidas(fieldnames: list[str]) -> dict:
-    col_map = {k: None for k in (
-        "data", "observacao", "codigo_item", "titulo",
-        "valor_unitario", "quantidade", "valor_total",
-    )}
-    for col in fieldnames:
-        c = _sem_acento(col)
-        if c in ("data", "data saida", "data de saida", "data venda"):
-            col_map["data"] = col
-        elif c in ("observacoes", "observacao", "obs", "obs.", "observacao"):
-            col_map["observacao"] = col
-        elif c in ("item", "codigo do item", "codigo", "cod. item", "cod item", "codigo item"):
-            col_map["codigo_item"] = col
-        elif c in ("titulo",):
-            col_map["titulo"] = col
-        elif c in ("valor unit", "valor unitario", "preco unitario", "valor unit.",
-                   "vl. unit.", "vlr unitario", "valor un."):
-            col_map["valor_unitario"] = col
-        elif c in ("qnt", "quantidade", "qtd", "qty", "qnt.", "qtde"):
-            col_map["quantidade"] = col
-        elif c in ("valor total", "total", "vl. total", "vlr total"):
-            col_map["valor_total"] = col
-    return col_map
-
-
 @router.get("/historico-saidas/template-csv")
 async def template_historico_saidas_csv(user=Depends(get_current_user)):
     """Retorna o modelo CSV para importação do histórico de saídas (vendas)."""
@@ -504,14 +412,11 @@ async def preview_historico_saidas_csv(
 ):
     """Pré-visualiza o CSV de histórico de saídas antes da importação."""
     content = await file.read()
-    try:
-        decoded = content.decode("utf-8-sig")
-    except UnicodeDecodeError:
-        decoded = content.decode("latin-1")
+    decoded = decodificar_csv(content)
 
     reader = csv.DictReader(io.StringIO(decoded))
     fieldnames = reader.fieldnames or []
-    col_map = _mapear_colunas_historico_saidas(fieldnames)
+    col_map = mapear_colunas_historico_saidas(fieldnames)
 
     preview_rows = []
     for i, row in enumerate(reader):
@@ -550,12 +455,12 @@ async def preview_historico_saidas_csv(
                     mapped[field] = f"Erro: '{raw}' não é numérico"
             elif field == "quantidade" and raw:
                 try:
-                    mapped[field] = _limpar_quantidade(raw)
+                    mapped[field] = limpar_quantidade(raw)
                 except (ValueError, ArithmeticError):
                     mapped[field] = f"Erro: '{raw}' não é numérico"
             elif field in ("valor_unitario", "valor_total") and raw:
                 try:
-                    mapped[field] = float(_limpar_monetario(raw))
+                    mapped[field] = float(limpar_monetario(raw))
                 except (ValueError, InvalidOperation):
                     mapped[field] = f"Erro: '{raw}' não é numérico"
             else:
@@ -582,14 +487,11 @@ async def importar_historico_saidas_csv(
     filial_id_efetivo = filial_id if filial_id is not None else user["filial_id"]
 
     content = await file.read()
-    try:
-        decoded = content.decode("utf-8-sig")
-    except UnicodeDecodeError:
-        decoded = content.decode("latin-1")
+    decoded = decodificar_csv(content)
 
     reader = csv.DictReader(io.StringIO(decoded))
     fieldnames = reader.fieldnames or []
-    col_map = _mapear_colunas_historico_saidas(fieldnames)
+    col_map = mapear_colunas_historico_saidas(fieldnames)
     logger.info(f"Importação histórico saídas — filial={filial_id_efetivo}, cabeçalhos: {fieldnames}")
 
     def _get(row, field):
@@ -641,7 +543,7 @@ async def importar_historico_saidas_csv(
                 erros.append(f"Linha {i}: 'Qnt' é obrigatório")
                 continue
             try:
-                quantidade = _limpar_quantidade(qtd_raw)
+                quantidade = limpar_quantidade(qtd_raw)
                 if quantidade <= 0:
                     raise ValueError()
             except (ValueError, ArithmeticError):
@@ -654,7 +556,7 @@ async def importar_historico_saidas_csv(
                 erros.append(f"Linha {i}: 'Valor Unit' é obrigatório")
                 continue
             try:
-                valor_unitario = Decimal(_limpar_monetario(valor_raw))
+                valor_unitario = Decimal(limpar_monetario(valor_raw))
                 if valor_unitario < 0:
                     raise InvalidOperation()
             except (InvalidOperation, Exception):

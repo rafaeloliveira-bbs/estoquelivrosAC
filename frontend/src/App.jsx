@@ -6,18 +6,17 @@ import Livros from './pages/Livros';
 import Relatorios from './pages/Relatorios';
 import Usuarios from './pages/Usuarios';
 import Filiais from './pages/Filiais';
-import { getUserRole } from './utils/auth';
+import { isAuthenticated, getUserRole } from './utils/auth';
+import apiClient from './api/client';
 import logo from './logodef.jpeg';
 import './App.css';
 
 function PrivateRoute({ children }) {
-  const token = localStorage.getItem('token');
-  return token ? children : <Navigate to="/login" />;
+  return isAuthenticated() ? children : <Navigate to="/login" />;
 }
 
 function AdminRoute({ children }) {
-  const token = localStorage.getItem('token');
-  if (!token) return <Navigate to="/login" />;
+  if (!isAuthenticated()) return <Navigate to="/login" />;
   if (getUserRole() !== 'admin') return <Navigate to="/" />;
   return children;
 }
@@ -25,15 +24,16 @@ function AdminRoute({ children }) {
 function Navigation() {
   const navigate = useNavigate();
   const location = useLocation();
-  const token = localStorage.getItem('token');
 
-  if (!token) return null;
+  if (!isAuthenticated()) return null;
 
   const role = getUserRole();
 
-  const handleLogout = () => {
-    localStorage.removeItem('token');
-    localStorage.removeItem('refreshToken');
+  const handleLogout = async () => {
+    try {
+      await apiClient.post('/auth/logout');
+    } catch { /* ignora erros de rede */ }
+    localStorage.removeItem('user');
     navigate('/login');
   };
 

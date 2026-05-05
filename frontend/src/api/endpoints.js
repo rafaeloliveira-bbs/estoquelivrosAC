@@ -7,7 +7,7 @@ export const authAPI = {
 
 export const livrosAPI = {
   listar: (skip = 0, limit = 100) => apiClient.get('/livros/', { params: { skip, limit } }),
-  listarComEstoque: (termo = null, filial_id = null, skip = 0, limit = 100) =>
+  listarComEstoque: (termo = null, filial_id = null, skip = 0, limit = 2000) =>
     apiClient.get('/livros/com-estoque', { params: { termo, filial_id, skip, limit } }),
   obter: (id) => apiClient.get(`/livros/${id}`),
   porCodigo: (codigo_item) => apiClient.get(`/livros/por-codigo/${codigo_item}`),

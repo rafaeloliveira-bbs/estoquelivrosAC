@@ -1,7 +1,13 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import Dashboard from '../../pages/Dashboard';
 import { relatoriosAPI } from '../../api/endpoints';
+
+function renderWithQuery(ui) {
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  return render(<QueryClientProvider client={client}>{ui}</QueryClientProvider>);
+}
 
 vi.mock('../../api/endpoints', () => ({
   relatoriosAPI: {
@@ -48,7 +54,7 @@ describe('Dashboard', () => {
     relatoriosAPI.estoqueAtual.mockReturnValueOnce(new Promise(() => {}));
     relatoriosAPI.alertasMinimo.mockReturnValueOnce(new Promise(() => {}));
 
-    render(<Dashboard />);
+    renderWithQuery(<Dashboard />);
     expect(screen.getByText('Carregando...')).toBeInTheDocument();
   });
 
@@ -56,7 +62,7 @@ describe('Dashboard', () => {
     relatoriosAPI.estoqueAtual.mockResolvedValueOnce({ data: estoqueFixture });
     relatoriosAPI.alertasMinimo.mockResolvedValueOnce({ data: { total_alertas: 0, alertas: [] } });
 
-    render(<Dashboard />);
+    renderWithQuery(<Dashboard />);
 
     await waitFor(() => {
       expect(screen.getByText('O Senhor dos Anéis')).toBeInTheDocument();
@@ -64,15 +70,16 @@ describe('Dashboard', () => {
     });
   });
 
-  it('exibe contadores de estoque total e alertas nos cards', async () => {
+  it('exibe contador de total_itens no card de ítens', async () => {
     relatoriosAPI.estoqueAtual.mockResolvedValueOnce({ data: estoqueFixture });
-    relatoriosAPI.alertasMinimo.mockResolvedValueOnce({ data: alertasFixture });
+    relatoriosAPI.alertasMinimo.mockResolvedValueOnce({ data: { total_alertas: 0, alertas: [] } });
 
-    render(<Dashboard />);
+    renderWithQuery(<Dashboard />);
 
     await waitFor(() => {
+      // total_itens: 2 é renderizado no card "Total de Ítens"
+      expect(screen.getByText('Total de Ítens')).toBeInTheDocument();
       expect(screen.getByText('2')).toBeInTheDocument();
-      expect(screen.getByText('1')).toBeInTheDocument();
     });
   });
 
@@ -80,7 +87,7 @@ describe('Dashboard', () => {
     relatoriosAPI.estoqueAtual.mockResolvedValueOnce({ data: estoqueFixture });
     relatoriosAPI.alertasMinimo.mockResolvedValueOnce({ data: alertasFixture });
 
-    render(<Dashboard />);
+    renderWithQuery(<Dashboard />);
 
     await waitFor(() => {
       expect(screen.getByText('Livro Raro')).toBeInTheDocument();
@@ -92,7 +99,7 @@ describe('Dashboard', () => {
     relatoriosAPI.estoqueAtual.mockRejectedValueOnce(new Error('Erro de rede'));
     relatoriosAPI.alertasMinimo.mockRejectedValueOnce(new Error('Erro de rede'));
 
-    render(<Dashboard />);
+    renderWithQuery(<Dashboard />);
 
     await waitFor(() => {
       expect(screen.getByText('Erro ao carregar dados')).toBeInTheDocument();

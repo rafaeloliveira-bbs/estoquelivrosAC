@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { livrosAPI, categoriasAPI, filiaisAPI } from '../api/endpoints';
-import { getUserRole, getTokenPayload } from '../utils/auth';
+import { getUserRole, getUser } from '../utils/auth';
 import { parseMoeda, formatMoedaBR } from '../utils/moeda';
 import './Livros.css';
 
@@ -14,7 +14,7 @@ const FORM_VAZIO = {
 export default function Livros() {
   const queryClient = useQueryClient();
   const isAdmin = getUserRole() === 'admin';
-  const filialIds = getTokenPayload()?.filial_ids ?? [];
+  const filialIds = getUser()?.filial_ids ?? [];
   const [busca, setBusca] = useState('');
   const [buscaDebounced, setBuscaDebounced] = useState('');
   const [filialFiltro, setFilialFiltro] = useState(null);

@@ -20,12 +20,12 @@ export default function Login() {
 
     try {
       const response = await authAPI.login(email, senha);
-      const { access_token, refresh_token } = response.data;
+      const { user } = response.data;
 
-      localStorage.setItem('token', access_token);
-      localStorage.setItem('refreshToken', refresh_token);
+      // Armazena apenas dados públicos do usuário — o JWT fica no cookie httpOnly
+      localStorage.setItem('user', JSON.stringify(user));
 
-      setUser({ email }, access_token);
+      setUser(user);
       navigate('/');
     } catch (err) {
       setError('Email ou senha incorretos');

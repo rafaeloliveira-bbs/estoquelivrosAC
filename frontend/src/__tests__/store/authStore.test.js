@@ -1,24 +1,23 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import useAuthStore from '../../store/authStore';
 
+const USER_MOCK = { id: 1, email: 'admin@estoque.com', role: 'admin', filial_id: 1, filial_ids: [1] };
+
 describe('authStore', () => {
   beforeEach(() => {
-    useAuthStore.setState({ user: null, token: null, isLoading: false, error: null });
+    useAuthStore.setState({ user: null, isLoading: false, error: null });
   });
 
-  it('define usuário e token via setUser', () => {
-    useAuthStore.getState().setUser({ email: 'admin@estoque.com' }, 'token-abc');
-    const { user, token } = useAuthStore.getState();
-    expect(user).toEqual({ email: 'admin@estoque.com' });
-    expect(token).toBe('token-abc');
+  it('define usuário via setUser', () => {
+    useAuthStore.getState().setUser(USER_MOCK);
+    const { user } = useAuthStore.getState();
+    expect(user).toEqual(USER_MOCK);
   });
 
-  it('limpa usuário e token no logout', () => {
-    useAuthStore.setState({ user: { email: 'admin@estoque.com' }, token: 'token-abc' });
+  it('limpa usuário no logout', () => {
+    useAuthStore.setState({ user: USER_MOCK });
     useAuthStore.getState().logout();
-    const { user, token } = useAuthStore.getState();
-    expect(user).toBeNull();
-    expect(token).toBeNull();
+    expect(useAuthStore.getState().user).toBeNull();
   });
 
   it('altera isLoading via setLoading', () => {

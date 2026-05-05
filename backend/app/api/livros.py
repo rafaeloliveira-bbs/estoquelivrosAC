@@ -19,6 +19,7 @@ from app.services.estoque import registrar_compra
 from app.crud.filial import obter_filial_por_id, obter_filial_por_nome
 from app.auth.permissions import get_current_user, requer_role
 from app.config import logger
+from app.utils.csv_parsing import decodificar_csv, mapear_colunas_livros, limpar_monetario
 
 router = APIRouter(prefix="/livros", tags=["livros"])
 
@@ -65,66 +66,19 @@ async def preview_csv(
 ):
     """Pré-visualiza o conteúdo do CSV antes da importação."""
     content = await file.read()
-    try:
-        decoded = content.decode("utf-8-sig")
-    except UnicodeDecodeError:
-        decoded = content.decode("latin-1")
+    decoded = decodificar_csv(content)
 
     reader = csv.DictReader(io.StringIO(decoded))
-    
-    # Obter cabeçalhos
+
     fieldnames = reader.fieldnames or []
-    
-    # Ler primeiras 5 linhas para preview
+
     preview_rows = []
     for i, row in enumerate(reader):
-        if i >= 5:  # Máximo 5 linhas
+        if i >= 5:
             break
         preview_rows.append(row)
-    
-    # Mapear colunas encontradas
-    column_mapping = {
-        "codigo_item": None,
-        "titulo": None,
-        "fornecedor": None,
-        "editora": None,
-        "classificacao": None,
-        "tipo_material": None,
-        "grade": None,
-        "isbn": None,
-        "descontinuado": None,
-        "quantidade": None,
-        "preco_unitario": None,
-        "filial": None,
-    }
 
-    # Tentar mapear colunas automaticamente
-    for col in fieldnames:
-        col_lower = col.lower().strip()
-        if col_lower in ["item", "código item", "codigo_item", "código"]:
-            column_mapping["codigo_item"] = col
-        elif col_lower in ["títulos", "titulo", "título"]:
-            column_mapping["titulo"] = col
-        elif col_lower in ["fornecedor"]:
-            column_mapping["fornecedor"] = col
-        elif col_lower in ["editora"]:
-            column_mapping["editora"] = col
-        elif col_lower in ["classificação", "classificacao"]:
-            column_mapping["classificacao"] = col
-        elif col_lower in ["tipo do material", "tipo_material", "tipo"]:
-            column_mapping["tipo_material"] = col
-        elif col_lower in ["grade"]:
-            column_mapping["grade"] = col
-        elif col_lower in ["isbn 13", "isbn", "isbn13"]:
-            column_mapping["isbn"] = col
-        elif col_lower in ["descontinuado?", "descontinuado"]:
-            column_mapping["descontinuado"] = col
-        elif col_lower in ["quantidade", "qtd", "qty"]:
-            column_mapping["quantidade"] = col
-        elif col_lower in ["preço unitário", "preco_unitario", "preco unitario", "preço", "preco"]:
-            column_mapping["preco_unitario"] = col
-        elif col_lower in ["filial", "filial_id", "id da filial"]:
-            column_mapping["filial"] = col
+    column_mapping = mapear_colunas_livros(fieldnames)
 
     # Validar mapeamento
     warnings = []
@@ -198,10 +152,7 @@ async def importar_csv(
 ):
     """Importa livros a partir de um arquivo CSV."""
     content = await file.read()
-    try:
-        decoded = content.decode("utf-8-sig")
-    except UnicodeDecodeError:
-        decoded = content.decode("latin-1")
+    decoded = decodificar_csv(content)
 
     reader = csv.DictReader(io.StringIO(decoded))
 
@@ -209,43 +160,10 @@ async def importar_csv(
     atualizados = 0
     erros = []
 
-    # Log dos cabeçalhos encontrados
     fieldnames = reader.fieldnames or []
     logger.info(f"Importação CSV - Cabeçalhos encontrados: {fieldnames}")
 
-    # Mapear colunas dinamicamente (igual ao preview)
-    col_map = {
-        "codigo_item": None, "titulo": None, "fornecedor": None, "editora": None,
-        "classificacao": None, "tipo_material": None, "grade": None,
-        "isbn": None, "descontinuado": None, "quantidade": None, "preco_unitario": None,
-        "filial": None,
-    }
-    for col in fieldnames:
-        col_lower = col.lower().strip()
-        if col_lower in ["item", "código item", "codigo item", "codigo_item", "código"]:
-            col_map["codigo_item"] = col
-        elif col_lower in ["títulos", "titulo", "título"]:
-            col_map["titulo"] = col
-        elif col_lower in ["fornecedor"]:
-            col_map["fornecedor"] = col
-        elif col_lower in ["editora"]:
-            col_map["editora"] = col
-        elif col_lower in ["classificação", "classificacao"]:
-            col_map["classificacao"] = col
-        elif col_lower in ["tipo do material", "tipo_material", "tipo"]:
-            col_map["tipo_material"] = col
-        elif col_lower in ["grade"]:
-            col_map["grade"] = col
-        elif col_lower in ["isbn 13", "isbn", "isbn13"]:
-            col_map["isbn"] = col
-        elif col_lower in ["descontinuado?", "descontinuado"]:
-            col_map["descontinuado"] = col
-        elif col_lower in ["quantidade", "qtd", "qty"]:
-            col_map["quantidade"] = col
-        elif col_lower in ["preço unitário", "preco_unitario", "preco unitario", "preço", "preco"]:
-            col_map["preco_unitario"] = col
-        elif col_lower in ["filial", "filial_id", "id da filial"]:
-            col_map["filial"] = col
+    col_map = mapear_colunas_livros(fieldnames)
 
     def _get(row, field):
         col = col_map.get(field)
@@ -332,7 +250,7 @@ async def importar_csv(
                     if qtd <= 0:
                         raise ValueError("quantidade deve ser > 0")
                     preco_raw = _get(row, "preco_unitario")
-                    preco = Decimal(preco_raw.replace(",", ".")) if preco_raw else Decimal("0.00")
+                    preco = Decimal(limpar_monetario(preco_raw)) if preco_raw else Decimal("0.00")
                     numero_lote = f"{numero_lote_base}-{codigo_item or livro_id}-{i}"
                     registrar_compra(
                         db,
@@ -407,7 +325,7 @@ async def listar_com_estoque(
     termo: str = Query(None),
     filial_id: Optional[int] = Query(None),
     skip: int = Query(0, ge=0),
-    limit: int = Query(100, ge=1, le=1000),
+    limit: int = Query(2000, ge=1, le=5000),
     db: Session = Depends(get_db),
     user=Depends(get_current_user),
 ):

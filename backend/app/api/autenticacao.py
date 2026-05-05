@@ -1,19 +1,41 @@
-from fastapi import APIRouter, Depends, HTTPException, status, Request
+from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 from slowapi import Limiter
 from slowapi.util import get_remote_address
+from app.config import settings, logger
 from app.database import get_db
 from app.schemas.usuario import UsuarioLogin, TokenResposta, UsuarioResposta, UsuarioCriar, RefreshRequest
 from app.crud.usuario import obter_usuario_por_email, obter_usuario_por_id, criar_usuario, atualizar_ultimo_acesso
 from app.auth.jwt import verify_password, create_access_token, create_refresh_token, decode_token
+from app.auth.permissions import requer_admin
 from app.models.usuario_filial import UsuarioFilial
 from app.models.filial import Filial
-from app.config import logger
 
 limiter = Limiter(key_func=get_remote_address)
 
 router = APIRouter(prefix="/auth", tags=["autenticação"])
+
+_COOKIE_OPTS = dict(
+    httponly=True,
+    samesite="lax",
+    secure=settings.COOKIE_SECURE,
+)
+
+
+def _set_auth_cookies(response: Response, access_token: str, refresh_token: str, expires_in: int):
+    response.set_cookie(
+        key="access_token",
+        value=access_token,
+        max_age=expires_in,
+        **_COOKIE_OPTS,
+    )
+    response.set_cookie(
+        key="refresh_token",
+        value=refresh_token,
+        max_age=settings.REFRESH_TOKEN_EXPIRE_DAYS * 86400,
+        **_COOKIE_OPTS,
+    )
 
 
 async def _autenticar_usuario(email: str, senha: str, db: Session) -> dict:
@@ -46,7 +68,6 @@ async def _autenticar_usuario(email: str, senha: str, db: Session) -> dict:
     else:
         registros = db.query(UsuarioFilial).filter(UsuarioFilial.usuario_id == usuario.id).all()
         if not registros:
-            # Primeira vez: semeia a filial primária para manter o dado consistente
             try:
                 db.add(UsuarioFilial(usuario_id=usuario.id, filial_id=usuario.filial_id))
                 db.commit()
@@ -56,7 +77,6 @@ async def _autenticar_usuario(email: str, senha: str, db: Session) -> dict:
         else:
             filial_ids = [uf.filial_id for uf in registros]
 
-    # Tokens gerados antes de qualquer escrita opcional no banco
     access_token, expires_in = create_access_token(
         user_id=usuario.id,
         role=usuario.role,
@@ -70,7 +90,6 @@ async def _autenticar_usuario(email: str, senha: str, db: Session) -> dict:
         filial_ids=filial_ids,
     )
 
-    # Atualização não-crítica: falha não bloqueia o login
     try:
         atualizar_ultimo_acesso(db, usuario.id)
     except Exception:
@@ -82,27 +101,61 @@ async def _autenticar_usuario(email: str, senha: str, db: Session) -> dict:
         "access_token": access_token,
         "refresh_token": refresh_token,
         "expires_in": expires_in,
+        # dados públicos do usuário — o frontend armazena isso, não o JWT
+        "user": {
+            "id": usuario.id,
+            "email": usuario.email,
+            "role": usuario.role,
+            "filial_id": usuario.filial_id,
+            "filial_ids": filial_ids,
+        },
     }
 
 
-@router.post("/login", response_model=TokenResposta)
+@router.post("/login")
 @limiter.limit("5/minute")
-async def login(request: Request, credenciais: UsuarioLogin, db: Session = Depends(get_db)):
-    """Login via JSON body."""
-    return await _autenticar_usuario(credenciais.email, credenciais.senha, db)
+async def login(
+    request: Request,
+    response: Response,
+    credenciais: UsuarioLogin,
+    db: Session = Depends(get_db),
+):
+    """Login via JSON body. Define cookies httpOnly com os tokens."""
+    dados = await _autenticar_usuario(credenciais.email, credenciais.senha, db)
+    _set_auth_cookies(response, dados["access_token"], dados["refresh_token"], dados["expires_in"])
+    return dados
 
 
 @router.post("/token", response_model=TokenResposta)
 @limiter.limit("5/minute")
-async def token(request: Request, form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
+async def token(
+    request: Request,
+    response: Response,
+    form_data: OAuth2PasswordRequestForm = Depends(),
+    db: Session = Depends(get_db),
+):
     """Login via form data — compatível com OAuth2 e o botão Authorize do Swagger."""
-    return await _autenticar_usuario(form_data.username, form_data.password, db)
+    dados = await _autenticar_usuario(form_data.username, form_data.password, db)
+    _set_auth_cookies(response, dados["access_token"], dados["refresh_token"], dados["expires_in"])
+    return dados
 
 
-@router.post("/refresh", response_model=TokenResposta)
-async def refresh(body: RefreshRequest, db: Session = Depends(get_db)):
-    """Renova o access token usando o refresh token no body JSON."""
-    payload = decode_token(body.token)
+@router.post("/refresh")
+async def refresh(
+    request: Request,
+    response: Response,
+    body: RefreshRequest | None = None,
+    db: Session = Depends(get_db),
+):
+    """Renova o access token usando o refresh token (cookie ou body JSON)."""
+    raw_token = request.cookies.get("refresh_token")
+    if not raw_token and body:
+        raw_token = body.token
+
+    if not raw_token:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Refresh token ausente")
+
+    payload = decode_token(raw_token)
 
     if not payload or payload.get("type") != "refresh":
         raise HTTPException(
@@ -122,6 +175,7 @@ async def refresh(body: RefreshRequest, db: Session = Depends(get_db)):
     else:
         registros = db.query(UsuarioFilial).filter(UsuarioFilial.usuario_id == usuario.id).all()
         filial_ids = [uf.filial_id for uf in registros] or [payload["filial_id"]]
+
     access_token, expires_in = create_access_token(
         user_id=payload["user_id"],
         role=payload["role"],
@@ -129,16 +183,30 @@ async def refresh(body: RefreshRequest, db: Session = Depends(get_db)):
         filial_ids=filial_ids,
     )
 
+    _set_auth_cookies(response, access_token, raw_token, expires_in)
+
     return {
         "access_token": access_token,
-        "refresh_token": body.token,
+        "refresh_token": raw_token,
         "expires_in": expires_in,
     }
 
 
+@router.post("/logout")
+async def logout(response: Response):
+    """Apaga os cookies de autenticação."""
+    response.delete_cookie("access_token")
+    response.delete_cookie("refresh_token")
+    return {"ok": True}
+
+
 @router.post("/registrar", response_model=UsuarioResposta)
-async def registrar(usuario: UsuarioCriar, db: Session = Depends(get_db)):
-    """Registra novo usuário (remover em produção)."""
+async def registrar(
+    usuario: UsuarioCriar,
+    db: Session = Depends(get_db),
+    _admin=Depends(requer_admin()),
+):
+    """Registra novo usuário. Requer autenticação de administrador."""
     usuario_existente = obter_usuario_por_email(db, usuario.email)
     if usuario_existente:
         raise HTTPException(

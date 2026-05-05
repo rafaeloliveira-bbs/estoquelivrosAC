@@ -1,13 +1,20 @@
-export function getTokenPayload() {
-  const token = localStorage.getItem('token');
-  if (!token) return null;
+export function getUser() {
   try {
-    return JSON.parse(atob(token.split('.')[1]));
+    const raw = localStorage.getItem('user');
+    return raw ? JSON.parse(raw) : null;
   } catch {
     return null;
   }
 }
 
 export function getUserRole() {
-  return getTokenPayload()?.role ?? null;
+  return getUser()?.role ?? null;
+}
+
+export function getFilialIds() {
+  return getUser()?.filial_ids ?? [];
+}
+
+export function isAuthenticated() {
+  return getUser() !== null;
 }

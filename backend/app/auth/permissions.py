@@ -1,16 +1,34 @@
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import OAuth2PasswordBearer
 from app.auth.jwt import decode_token
 
-# tokenUrl aponta para o endpoint OAuth2-compatível que o Swagger Authorize usa
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/token")
+# auto_error=False: permite que o cookie seja a fonte primária sem rejeitar requests sem header
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/token", auto_error=False)
 
 
-async def get_current_user(token: str = Depends(oauth2_scheme)):
-    """Extrai e valida o JWT do header Authorization: Bearer."""
+def _extrair_token(request: Request, header_token: str | None) -> str | None:
+    """Cookie httpOnly tem prioridade; Authorization header é fallback (Swagger)."""
+    cookie = request.cookies.get("access_token")
+    return cookie or header_token
+
+
+async def get_current_user(
+    request: Request,
+    header_token: str | None = Depends(oauth2_scheme),
+):
+    """Extrai e valida o JWT do cookie httpOnly ou do header Authorization: Bearer."""
+    token = _extrair_token(request, header_token)
+
+    if not token:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Não autenticado",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
     payload = decode_token(token)
 
-    if payload is None:
+    if payload is None or payload.get("type") != "access":
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Token inválido ou expirado",
