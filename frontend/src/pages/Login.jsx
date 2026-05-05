@@ -20,10 +20,10 @@ export default function Login() {
 
     try {
       const response = await authAPI.login(email, senha);
-      const { user } = response.data;
+      const { user, access_token } = response.data;
 
-      // Armazena apenas dados públicos do usuário — o JWT fica no cookie httpOnly
       localStorage.setItem('user', JSON.stringify(user));
+      localStorage.setItem('access_token', access_token);
 
       setUser(user);
       navigate('/');

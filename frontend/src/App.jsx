@@ -34,6 +34,7 @@ function Navigation() {
       await apiClient.post('/auth/logout');
     } catch { /* ignora erros de rede */ }
     localStorage.removeItem('user');
+    localStorage.removeItem('access_token');
     navigate('/login');
   };
 
