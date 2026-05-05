@@ -166,7 +166,13 @@ export default function Usuarios() {
                     <td>{u.nome}</td>
                     <td>{u.email}</td>
                     <td><span className={roleBadgeClass(u.role)}>{u.role}</span></td>
-                    <td>{u.filial_id}</td>
+                    <td>
+                      {u.filiais_ids?.length > 0
+                        ? u.filiais_ids
+                            .map((id) => todasFiliais.find((f) => f.id === id)?.nome ?? `#${id}`)
+                            .join(', ')
+                        : u.filial_id ?? '—'}
+                    </td>
                     <td>
                       <span className={`badge ${u.ativo ? 'badge-green' : 'badge-gray'}`}>
                         {u.ativo ? 'Ativo' : 'Inativo'}

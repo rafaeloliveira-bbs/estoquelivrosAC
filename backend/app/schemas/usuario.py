@@ -24,7 +24,8 @@ class UsuarioResposta(UsuarioBase):
     ativo: bool
     ultimo_acesso: Optional[datetime] = None
     criado_em: Optional[datetime] = None
-    
+    filiais_ids: list[int] = []
+
     class Config:
         from_attributes = True
 

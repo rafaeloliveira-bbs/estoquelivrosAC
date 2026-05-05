@@ -30,7 +30,7 @@ async def criar_novo_usuario(
     logger.info(f"Novo usuário criado: {usuario.email} — vinculado a {len(filiais)} filial(is)")
     return novo_usuario
 
-@router.get("/", response_model=list[UsuarioResposta])
+@router.get("/")
 async def listar(
     skip: int = Query(0, ge=0),
     limit: int = Query(100, ge=1, le=1000),
@@ -39,7 +39,17 @@ async def listar(
 ):
     """List users"""
     usuarios = listar_usuarios(db, skip=skip, limit=limit)
-    return usuarios
+    usuario_ids = [u.id for u in usuarios]
+    filiais_map: dict[int, list[int]] = {}
+    if usuario_ids:
+        for r in db.query(UsuarioFilial).filter(UsuarioFilial.usuario_id.in_(usuario_ids)).all():
+            filiais_map.setdefault(r.usuario_id, []).append(r.filial_id)
+    result = []
+    for u in usuarios:
+        d = UsuarioResposta.model_validate(u).model_dump()
+        d['filiais_ids'] = filiais_map.get(u.id, [u.filial_id])
+        result.append(d)
+    return result
 
 @router.get("/{usuario_id}", response_model=UsuarioResposta)
 async def obter(
