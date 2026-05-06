@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, Fragment } from 'react';
 import { relatoriosAPI, filiaisAPI } from '../api/endpoints';
-import { getUserRole } from '../utils/auth';
+import { getFilialIds } from '../utils/auth';
 import './Relatorios.css';
 
 const MESES_PT = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
@@ -15,7 +15,7 @@ function formatValor(v) {
 }
 
 export default function Relatorios() {
-  const isAdmin = getUserRole() === 'admin' || getUserRole() === 'gestor';
+  const userFilialIds = getFilialIds();
   const [filiais, setFiliais] = useState([]);
   const [filialId, setFilialId] = useState('');
   const [dados, setDados] = useState(null);
@@ -28,8 +28,20 @@ export default function Relatorios() {
   const topScrollInnerRef = useRef(null);
 
   useEffect(() => {
-    if (isAdmin) filiaisAPI.listar().then(r => setFiliais(r.data)).catch(() => {});
-  }, [isAdmin]);
+    filiaisAPI.listar()
+      .then(r => {
+        const minhas = r.data.filter(f => userFilialIds.includes(f.id));
+        setFiliais(minhas);
+        const primeiro = minhas[0];
+        if (primeiro) {
+          setFilialId(String(primeiro.id));
+          carregar(primeiro.id);
+        } else {
+          carregar(undefined);
+        }
+      })
+      .catch(() => carregar(undefined));
+  }, []);
 
   // Sincroniza largura da barra superior com o scrollWidth real da tabela
   useEffect(() => {
@@ -42,10 +54,6 @@ export default function Relatorios() {
     ro.observe(wrapperRef.current);
     return () => ro.disconnect();
   }, [dados]);
-
-  useEffect(() => {
-    carregar();
-  }, []);
 
   function carregar(fid) {
     setLoading(true);
@@ -70,7 +78,7 @@ export default function Relatorios() {
     <div className="relatorios-page">
       <div className="evolucao-header">
         <h1>Evolução do Estoque</h1>
-        {isAdmin && (
+        {filiais.length > 1 && (
           <select
             className="evolucao-filial"
             value={filialId}
@@ -79,7 +87,6 @@ export default function Relatorios() {
               carregar(e.target.value);
             }}
           >
-            <option value="">Minha filial</option>
             {filiais.map(f => (
               <option key={f.id} value={f.id}>{f.nome}</option>
             ))}
