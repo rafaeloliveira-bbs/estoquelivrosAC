@@ -713,3 +713,12 @@
   color: #1e6b32;
   font-size: 0.88rem;
 }
+
+/* Permite que o dropdown de busca escape do clip da tabela NF */
+.preview-table--nf {
+  overflow: visible;
+}
+
+.preview-table--nf table {
+  overflow: visible;
+}

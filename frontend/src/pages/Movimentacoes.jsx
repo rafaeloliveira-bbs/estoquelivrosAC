@@ -655,7 +655,7 @@ export default function Movimentacoes() {
                   <ul>{previewNf.avisos.map((a, i) => <li key={i}>{a}</li>)}</ul>
                 </div>
               )}
-              <div className="preview-table">
+              <div className="preview-table preview-table--nf">
                 <table>
                   <thead>
                     <tr>
@@ -671,8 +671,8 @@ export default function Movimentacoes() {
                       const termo = buscasNf[i] || '';
                       const filtrados = termo.length >= 2
                         ? livrosFilial.filter((l) =>
-                            l.titulo.toLowerCase().includes(termo.toLowerCase()) ||
-                            String(l.codigo_item).includes(termo)
+                            (l.titulo ?? '').toLowerCase().includes(termo.toLowerCase()) ||
+                            String(l.codigo_item ?? '').includes(termo)
                           ).slice(0, 10)
                         : [];
                       return (
