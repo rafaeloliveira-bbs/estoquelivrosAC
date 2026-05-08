@@ -37,9 +37,13 @@ def sem_acento(s: str) -> str:
 
 
 def decodificar_csv(content: bytes) -> str:
-    """Decodifica bytes de CSV tentando UTF-8 com BOM e depois latin-1."""
+    """Decodifica bytes de CSV removendo BOM UTF-8 no nível de bytes antes de decodificar.
+    Isso evita que o BOM corrompa o cabeçalho da primeira coluna quando o arquivo
+    está em latin-1 mas tem um BOM UTF-8 prefixado (comum em exports do Excel BR)."""
+    if content.startswith(b'\xef\xbb\xbf'):
+        content = content[3:]
     try:
-        return content.decode("utf-8-sig")
+        return content.decode("utf-8")
     except UnicodeDecodeError:
         return content.decode("latin-1")
 
@@ -81,17 +85,46 @@ def mapear_colunas_livros(fieldnames: list[str]) -> dict:
     return col_map
 
 
+def _mapear_data(fieldnames: list[str], extras: tuple = ()) -> str | None:
+    """Retorna o nome real da coluna de data no CSV, ou None se não encontrada.
+
+    Estratégia em duas etapas:
+    1. Correspondência exata com nomes conhecidos (lista expandida).
+    2. Fallback: primeira coluna cujo nome normalizado começa com 'data' ou 'dt'.
+    """
+    conhecidos = {
+        "data", "data entrada", "data de entrada",
+        "data saida", "data de saida", "data venda", "data de venda",
+        "data compra", "data de compra", "data emissao", "data de emissao",
+        "data movimentacao", "data de movimentacao", "data lancamento",
+        "data de lancamento", "data nf", "data da nf", "data nota",
+        "data nota fiscal", "data pedido", "data do pedido",
+        "dt", "dt.", "dt entrada", "dt saida", "dt venda",
+    } | set(extras)
+
+    for col in fieldnames:
+        if sem_acento(col) in conhecidos:
+            return col
+
+    # Fallback: qualquer coluna que comece com "data" ou "dt" (ex.: "Data Emissão", "Dt. NF")
+    for col in fieldnames:
+        c = sem_acento(col)
+        if c.startswith("data") or c == "dt" or c.startswith("dt ") or c.startswith("dt."):
+            return col
+
+    return None
+
+
 def mapear_colunas_historico_saidas(fieldnames: list[str]) -> dict:
     """Mapeia cabeçalhos do CSV de saídas/vendas para campos de movimentação."""
     col_map = {k: None for k in (
         "data", "observacao", "codigo_item", "titulo",
         "valor_unitario", "quantidade", "valor_total",
     )}
+    col_map["data"] = _mapear_data(fieldnames)
     for col in fieldnames:
         c = sem_acento(col)
-        if c in ("data", "data saida", "data de saida", "data venda"):
-            col_map["data"] = col
-        elif c in ("observacoes", "observacao", "obs", "obs."):
+        if c in ("observacoes", "observacao", "obs", "obs."):
             col_map["observacao"] = col
         elif c in ("item", "codigo do item", "codigo", "cod. item", "cod item", "codigo item"):
             col_map["codigo_item"] = col
@@ -113,12 +146,11 @@ def mapear_colunas_historico(fieldnames: list[str]) -> dict:
         "data", "nf", "codigo_item", "grade", "titulo",
         "valor_unitario", "quantidade", "valor_total", "observacao",
     )}
+    col_map["data"] = _mapear_data(fieldnames)
     for col in fieldnames:
         c = sem_acento(col)
-        if c in ("data", "data entrada", "data de entrada"):
-            col_map["data"] = col
-        elif c in ("nº nf", "n nf", "nf", "nota fiscal", "numero nf", "n da nf",
-                   "num nf", "n. nf", "numero da nf", "n nota", "no nf", "nº nota"):
+        if c in ("nº nf", "n nf", "nf", "nota fiscal", "numero nf", "n da nf",
+                 "num nf", "n. nf", "numero da nf", "n nota", "no nf", "nº nota"):
             col_map["nf"] = col
         elif c in ("codigo do item", "codigo", "item", "cod. item", "cod item"):
             col_map["codigo_item"] = col

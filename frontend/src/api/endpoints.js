@@ -57,6 +57,8 @@ export const movimentacoesAPI = {
       params: { filial_id },
       headers: { 'Content-Type': 'multipart/form-data' },
     }),
+  limparHistorico: (filial_id, tipo) =>
+    apiClient.delete('/movimentacoes/historico', { params: { filial_id, tipo } }),
 };
 
 export const relatoriosAPI = {

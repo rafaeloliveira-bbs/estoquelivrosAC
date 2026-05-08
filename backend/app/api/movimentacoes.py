@@ -314,13 +314,17 @@ async def importar_historico_entradas_csv(
                     f"Linha {i}: Título do CSV ('{titulo_csv}') difere do cadastro ('{livro.titulo}') — importado assim mesmo"
                 )
 
-            # Data — DD/MM/AAAA (opcional; padrão: hoje)
+            # Data — tenta DD/MM/AAAA, AAAA-MM-DD e DD-MM-AAAA
             data_str = _get(row, "data")
             data_entrada = None
             if data_str:
-                try:
-                    data_entrada = datetime.strptime(data_str, "%d/%m/%Y").date()
-                except ValueError:
+                for _fmt in ("%d/%m/%Y", "%Y-%m-%d", "%d-%m-%Y", "%d/%m/%y"):
+                    try:
+                        data_entrada = datetime.strptime(data_str.strip(), _fmt).date()
+                        break
+                    except ValueError:
+                        continue
+                if data_entrada is None:
                     erros.append(f"Linha {i}: Data inválida '{data_str}' (esperado DD/MM/AAAA)")
                     continue
 
@@ -540,13 +544,17 @@ async def importar_historico_saidas_csv(
                     f"Linha {i}: Título do CSV ('{titulo_csv}') difere do cadastro ('{livro.titulo}') — importado assim mesmo"
                 )
 
-            # Data — DD/MM/AAAA (opcional; padrão: hoje)
+            # Data — tenta DD/MM/AAAA, AAAA-MM-DD e DD-MM-AAAA
             data_str = _get(row, "data")
             data_venda = None
             if data_str:
-                try:
-                    data_venda = datetime.strptime(data_str, "%d/%m/%Y").date()
-                except ValueError:
+                for _fmt in ("%d/%m/%Y", "%Y-%m-%d", "%d-%m-%Y", "%d/%m/%y"):
+                    try:
+                        data_venda = datetime.strptime(data_str.strip(), _fmt).date()
+                        break
+                    except ValueError:
+                        continue
+                if data_venda is None:
                     erros.append(f"Linha {i}: Data inválida '{data_str}' (esperado DD/MM/AAAA)")
                     continue
 
@@ -605,3 +613,31 @@ async def importar_historico_saidas_csv(
         f"Histórico saídas CSV: {importados} importados, {len(avisos)} avisos, {len(erros)} erros"
     )
     return {"importados": importados, "avisos": avisos, "erros": erros}
+
+
+# ─── Limpeza de Histórico Importado ──────────────────────────────────────────
+
+@router.delete("/historico")
+async def limpar_historico(
+    filial_id: int = Query(None),
+    tipo: str = Query(None, description="'entradas', 'saidas' ou omitir para ambos"),
+    db: Session = Depends(get_db),
+    user=Depends(requer_role(["admin"])),
+):
+    """Remove registros históricos importados via CSV (lote_id = NULL) da filial.
+    Movimentações regulares (compras/vendas com lote vinculado) NÃO são afetadas."""
+    filial_id_efetivo = filial_id if filial_id is not None else user["filial_id"]
+
+    query = db.query(Movimentacao).filter(
+        Movimentacao.filial_id == filial_id_efetivo,
+        Movimentacao.lote_id == None,
+    )
+    if tipo == "entradas":
+        query = query.filter(Movimentacao.tipo == "compra")
+    elif tipo == "saidas":
+        query = query.filter(Movimentacao.tipo == "venda")
+
+    removidos = query.delete(synchronize_session=False)
+    db.commit()
+    logger.info(f"Histórico limpo: {removidos} registros removidos (filial={filial_id_efetivo}, tipo={tipo})")
+    return {"removidos": removidos}

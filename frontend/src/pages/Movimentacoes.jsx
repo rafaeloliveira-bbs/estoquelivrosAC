@@ -59,6 +59,8 @@ export default function Movimentacoes() {
   const [tipoHistorico, setTipoHistorico] = useState('');
   const [filialHistorico, setFilialHistorico] = useState('');
   const [loadingHistorico, setLoadingHistorico] = useState(false);
+  const [limpandoHistorico, setLimpandoHistorico] = useState(false);
+  const [msgLimpar, setMsgLimpar] = useState('');
 
   // ── CSV import – Entradas ────────────────────────────────────────────────────
   const isAdmin = getUserRole() === 'admin' || getUserRole() === 'gestor';
@@ -101,6 +103,23 @@ export default function Movimentacoes() {
     document.addEventListener('mousedown', fechar);
     return () => document.removeEventListener('mousedown', fechar);
   }, []);
+
+  // ── Limpeza de histórico importado ───────────────────────────────────────────
+  const limparHistorico = async (tipo) => {
+    const label = tipo === 'entradas' ? 'entradas' : tipo === 'saidas' ? 'saídas' : 'entradas e saídas';
+    if (!window.confirm(`Remover todos os registros históricos importados de ${label}?\n\nISSO NÃO PODE SER DESFEITO. Movimentações registradas manualmente não serão afetadas.`)) return;
+    setLimpandoHistorico(true);
+    setMsgLimpar('');
+    try {
+      const res = await movimentacoesAPI.limparHistorico(filialHistorico || undefined, tipo);
+      setMsgLimpar(`${res.data.removidos} registro(s) removido(s).`);
+      carregarHistorico();
+    } catch {
+      setMsgLimpar('Erro ao limpar histórico.');
+    } finally {
+      setLimpandoHistorico(false);
+    }
+  };
 
   // ── Histórico loader ─────────────────────────────────────────────────────────
   const carregarHistorico = async () => {
@@ -757,7 +776,34 @@ export default function Movimentacoes() {
             <button className="submit-btn" style={{ alignSelf: 'flex-end', padding: '0.6rem 1.2rem' }} onClick={carregarHistorico}>
               Filtrar
             </button>
+            {getUserRole() === 'admin' && (
+              <div style={{ alignSelf: 'flex-end', display: 'flex', gap: '0.5rem' }}>
+                <button
+                  className="btn-danger-outline"
+                  style={{ padding: '0.6rem 1rem', fontSize: '0.82rem' }}
+                  disabled={limpandoHistorico}
+                  onClick={() => limparHistorico('entradas')}
+                  title="Remove todos os registros de compra importados via CSV (lote_id=NULL)"
+                >
+                  Limpar entradas importadas
+                </button>
+                <button
+                  className="btn-danger-outline"
+                  style={{ padding: '0.6rem 1rem', fontSize: '0.82rem' }}
+                  disabled={limpandoHistorico}
+                  onClick={() => limparHistorico('saidas')}
+                  title="Remove todos os registros de venda importados via CSV (lote_id=NULL)"
+                >
+                  Limpar saídas importadas
+                </button>
+              </div>
+            )}
           </div>
+          {msgLimpar && (
+            <p style={{ color: msgLimpar.startsWith('Erro') ? '#e53e3e' : '#38a169', margin: '0.5rem 0', fontSize: '0.9rem' }}>
+              {msgLimpar}
+            </p>
+          )}
 
           {loadingHistorico ? (
             <p style={{ color: '#999', textAlign: 'center', padding: '2rem' }}>Carregando...</p>
