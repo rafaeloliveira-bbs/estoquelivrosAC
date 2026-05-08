@@ -96,6 +96,9 @@ export default function Movimentacoes() {
   const [filialNfId, setFilialNfId] = useState('');
   const [tipoNf, setTipoNf] = useState('compra');
   const [previewNf, setPreviewNf] = useState(null);
+  const [itensNf, setItensNf] = useState([]);
+  const [livrosFilial, setLivrosFilial] = useState([]);
+  const [buscasNf, setBuscasNf] = useState({});
   const [importandoNf, setImportandoNf] = useState(false);
   const [resultadoImportNf, setResultadoImportNf] = useState(null);
   const [erroImportNf, setErroImportNf] = useState('');
@@ -363,20 +366,36 @@ export default function Movimentacoes() {
     setImportandoNf(true);
     const formData = new FormData();
     formData.append('file', file);
-    try {
-      const res = await movimentacoesAPI.previewNfPdf(formData, filialNfId);
-      setPreviewNf(res.data);
-    } catch (err) {
-      setErroImportNf(err.response?.data?.detail || 'Erro ao processar o PDF da NF');
-    } finally {
-      setImportandoNf(false);
+    const [previewResult, livrosResult] = await Promise.allSettled([
+      movimentacoesAPI.previewNfPdf(formData, filialNfId),
+      livrosAPI.listarComEstoque(null, filialNfId, 0, 2000),
+    ]);
+    setImportandoNf(false);
+    if (previewResult.status === 'rejected') {
+      setErroImportNf(previewResult.reason?.response?.data?.detail || 'Erro ao processar o PDF da NF');
+      e.target.value = '';
+      return;
     }
+    setPreviewNf(previewResult.value.data);
+    setItensNf(previewResult.value.data.itens);
+    if (livrosResult.status === 'fulfilled') setLivrosFilial(livrosResult.value.data);
     e.target.value = '';
+  };
+
+  const handleSelectLivroNf = (index, livro) => {
+    setItensNf((prev) =>
+      prev.map((item, i) =>
+        i === index
+          ? { ...item, livro_id: livro.id, codigo_item: livro.codigo_item, titulo_cadastro: livro.titulo, match_encontrado: true }
+          : item
+      )
+    );
+    setBuscasNf((prev) => ({ ...prev, [index]: '' }));
   };
 
   const handleConfirmarImportacaoNf = async () => {
     if (!previewNf) return;
-    const itensComMatch = previewNf.itens.filter((i) => i.match_encontrado);
+    const itensComMatch = itensNf.filter((i) => i.match_encontrado);
     if (itensComMatch.length === 0) return;
     setImportandoNf(true);
     setErroImportNf('');
@@ -394,6 +413,9 @@ export default function Movimentacoes() {
       });
       setResultadoImportNf(res.data);
       setPreviewNf(null);
+      setItensNf([]);
+      setLivrosFilial([]);
+      setBuscasNf({});
       setFilialNfId('');
       setTipoNf('compra');
       setDataInicio('');
@@ -408,6 +430,9 @@ export default function Movimentacoes() {
 
   const handleCancelarPreviewNf = () => {
     setPreviewNf(null);
+    setItensNf([]);
+    setLivrosFilial([]);
+    setBuscasNf({});
     setErroImportNf('');
   };
 
@@ -642,19 +667,58 @@ export default function Movimentacoes() {
                     </tr>
                   </thead>
                   <tbody>
-                    {previewNf.itens.map((item, i) => (
-                      <tr key={i}>
-                        <td>{item.titulo_nf}</td>
-                        <td className={!item.match_encontrado ? 'error-cell' : ''}>
-                          {item.match_encontrado
-                            ? `${item.codigo_item} — ${item.titulo_cadastro}`
-                            : 'Não encontrado no cadastro'}
-                        </td>
-                        <td>{item.quantidade}</td>
-                        <td>R$ {formatMoedaBR(item.valor_unitario)}</td>
-                        <td>R$ {formatMoedaBR(item.valor_total)}</td>
-                      </tr>
-                    ))}
+                    {itensNf.map((item, i) => {
+                      const termo = buscasNf[i] || '';
+                      const filtrados = termo.length >= 2
+                        ? livrosFilial.filter((l) =>
+                            l.titulo.toLowerCase().includes(termo.toLowerCase()) ||
+                            String(l.codigo_item).includes(termo)
+                          ).slice(0, 10)
+                        : [];
+                      return (
+                        <tr key={i}>
+                          <td>{item.titulo_nf}</td>
+                          <td>
+                            {item.match_encontrado ? (
+                              <span className="nf-match-ok">
+                                {item.codigo_item} — {item.titulo_cadastro}
+                              </span>
+                            ) : (
+                              <div className="nf-busca-livro">
+                                <input
+                                  type="text"
+                                  className="nf-busca-input"
+                                  placeholder="Pesquisar item..."
+                                  value={termo}
+                                  onChange={(e) =>
+                                    setBuscasNf((prev) => ({ ...prev, [i]: e.target.value }))
+                                  }
+                                />
+                                {termo.length >= 2 && (
+                                  <ul className="nf-busca-resultados">
+                                    {filtrados.length === 0 ? (
+                                      <li className="nf-busca-vazio">Nenhum item encontrado</li>
+                                    ) : (
+                                      filtrados.map((l) => (
+                                        <li
+                                          key={l.id}
+                                          onClick={() => handleSelectLivroNf(i, l)}
+                                        >
+                                          <strong>{l.codigo_item}</strong> — {l.titulo}
+                                        </li>
+                                      ))
+                                    )}
+                                  </ul>
+                                )}
+                              </div>
+                            )}
+                          </td>
+                          <td>{item.quantidade}</td>
+                          <td>R$ {formatMoedaBR(item.valor_unitario)}</td>
+                          <td>R$ {formatMoedaBR(item.valor_total)}</td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>
@@ -672,7 +736,7 @@ export default function Movimentacoes() {
                 <button
                   className="btn-primary"
                   onClick={handleConfirmarImportacaoNf}
-                  disabled={importandoNf || previewNf.itens.every((i) => !i.match_encontrado)}
+                  disabled={importandoNf || itensNf.every((i) => !i.match_encontrado)}
                 >
                   {importandoNf ? 'Importando...' : 'Confirmar Importação'}
                 </button>

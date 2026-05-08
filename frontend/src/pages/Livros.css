@@ -647,6 +647,121 @@
   border-color: #c94b1b;
 }
 
+/* Exportação */
+.btn-export {
+  background: #eaf2ff;
+  color: #1a56db;
+  border: 1.5px solid #c3d8fd;
+  padding: 0.6rem 1.2rem;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  font-weight: 600;
+  transition: background 0.2s, border-color 0.2s;
+  width: auto;
+}
+
+.btn-export:hover:not(:disabled) { background: #d4e6ff; border-color: #93c5fd; }
+.btn-export:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.modal--export {
+  width: 480px;
+}
+
+.export-subtitle {
+  font-size: 0.88rem;
+  color: #7a5c52;
+  margin: -0.5rem 0 1.25rem;
+}
+
+.export-cols-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.6rem;
+  margin-bottom: 0.75rem;
+}
+
+.export-col-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.88rem;
+  color: #4a3530;
+  cursor: pointer;
+  padding: 0.35rem 0.6rem;
+  border-radius: 6px;
+  border: 1px solid #f0e8e4;
+  background: #fdf8f5;
+  transition: background 0.15s;
+}
+
+.export-col-item:hover { background: #f5ede6; }
+
+.export-col-item input[type="checkbox"] {
+  accent-color: #e45e26;
+  width: 15px;
+  height: 15px;
+  flex-shrink: 0;
+}
+
+.export-select-all {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 1.25rem;
+}
+
+.btn-link {
+  background: none;
+  border: none;
+  color: #e45e26;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 0;
+  text-decoration: underline;
+  width: auto;
+}
+
+.btn-link:hover { color: #c94b1b; }
+
+.export-sep {
+  color: #c9b8b0;
+  font-size: 0.9rem;
+}
+
+.btn-export-xlsx {
+  background: #1d6f42;
+  color: white;
+  border: none;
+  padding: 0.6rem 1.2rem;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  font-weight: 700;
+  transition: background 0.2s;
+  width: auto;
+}
+
+.btn-export-xlsx:hover:not(:disabled) { background: #155d36; }
+.btn-export-xlsx:disabled { opacity: 0.45; cursor: not-allowed; }
+
+.btn-export-pdf {
+  background: #c0392b;
+  color: white;
+  border: none;
+  padding: 0.6rem 1.2rem;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  font-weight: 700;
+  transition: background 0.2s;
+  width: auto;
+}
+
+.btn-export-pdf:hover:not(:disabled) { background: #a93226; }
+.btn-export-pdf:disabled { opacity: 0.45; cursor: not-allowed; }
+
 /* Barra de progresso de importação */
 .import-progress-wrap {
   margin-bottom: 1rem;

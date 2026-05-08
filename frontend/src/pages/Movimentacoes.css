@@ -655,3 +655,61 @@
 .nf-import-options .form-group {
   max-width: 280px;
 }
+
+/* ── Busca de item na tabela NF ── */
+.nf-busca-livro {
+  position: relative;
+  min-width: 220px;
+}
+
+.nf-busca-input {
+  width: 100%;
+  padding: 0.4rem 0.6rem;
+  border: 1.5px solid #e0cfc9;
+  border-radius: 6px;
+  font-size: 0.88rem;
+  background: white;
+  box-sizing: border-box;
+}
+
+.nf-busca-input:focus {
+  outline: none;
+  border-color: #f68c3d;
+  box-shadow: 0 0 0 3px rgba(246, 140, 61, 0.12);
+}
+
+.nf-busca-resultados {
+  position: absolute;
+  top: calc(100% + 2px);
+  left: 0;
+  right: 0;
+  background: white;
+  border: 1.5px solid #e0cfc9;
+  border-radius: 6px;
+  box-shadow: 0 4px 16px rgba(85, 66, 57, 0.14);
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  z-index: 200;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.nf-busca-resultados li {
+  padding: 0.5rem 0.75rem;
+  font-size: 0.88rem;
+  color: #4a3530;
+  cursor: pointer;
+  border-bottom: 1px solid #f5ede6;
+  transition: background 0.13s;
+}
+
+.nf-busca-resultados li:last-child { border-bottom: none; }
+.nf-busca-resultados li:hover { background: #fdf3ea; }
+.nf-busca-resultados li.nf-busca-vazio { color: #999; cursor: default; font-style: italic; }
+.nf-busca-resultados li.nf-busca-vazio:hover { background: none; }
+
+.nf-match-ok {
+  color: #1e6b32;
+  font-size: 0.88rem;
+}

@@ -1,5 +1,8 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
+import * as XLSX from 'xlsx';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 import { livrosAPI, categoriasAPI, filiaisAPI } from '../api/endpoints';
 import { getUserRole, getUser } from '../utils/auth';
 import { parseMoeda, formatMoedaBR } from '../utils/moeda';
@@ -10,6 +13,21 @@ const FORM_VAZIO = {
   tipo_material: '', grade: '', isbn: '', descontinuado: false,
   filial_id: '', preco_custo: '', estoque_minimo: '', categoria_id: '',
 };
+
+const COLUNAS_EXPORT = [
+  { key: 'codigo_item', label: 'Código Item' },
+  { key: 'titulo', label: 'Título' },
+  { key: 'fornecedor', label: 'Fornecedor' },
+  { key: 'editora', label: 'Editora' },
+  { key: 'classificacao', label: 'Classificação' },
+  { key: 'tipo_material', label: 'Tipo do Material' },
+  { key: 'grade', label: 'Grade' },
+  { key: 'isbn', label: 'ISBN 13' },
+  { key: 'descontinuado', label: 'Descontinuado' },
+  { key: 'estoque_total', label: 'Estoque' },
+  { key: 'preco_custo', label: 'Preço de Custo' },
+  { key: 'status', label: 'Status' },
+];
 
 export default function Livros() {
   const queryClient = useQueryClient();
@@ -33,6 +51,10 @@ export default function Livros() {
   const fileInputRef = useRef(null);
   const [csvMenuAberto, setCsvMenuAberto] = useState(false);
   const csvMenuRef = useRef(null);
+  const [modalExport, setModalExport] = useState(false);
+  const [colunasExport, setColunasExport] = useState(
+    () => COLUNAS_EXPORT.reduce((acc, c) => ({ ...acc, [c.key]: true }), {})
+  );
 
   useEffect(() => {
     const t = setTimeout(() => setBuscaDebounced(busca), 300);
@@ -266,12 +288,63 @@ export default function Livros() {
     fileInputRef.current.value = '';
   };
 
+  const getColunasSelecionadas = () => COLUNAS_EXPORT.filter((c) => colunasExport[c.key]);
+
+  const buildLinhas = (colunas) =>
+    livrosOrdenados.map((l) =>
+      colunas.map((c) => {
+        if (c.key === 'descontinuado') return l.descontinuado ? 'Sim' : 'Não';
+        if (c.key === 'preco_custo') return l.preco_custo != null ? formatMoedaBR(l.preco_custo) : '-';
+        return l[c.key] != null ? String(l[c.key]) : '-';
+      })
+    );
+
+  const handleExportarXLSX = () => {
+    const cols = getColunasSelecionadas();
+    const dados = livrosOrdenados.map((l) => {
+      const row = {};
+      cols.forEach((c) => {
+        if (c.key === 'descontinuado') row[c.label] = l.descontinuado ? 'Sim' : 'Não';
+        else if (c.key === 'preco_custo') row[c.label] = l.preco_custo != null ? formatMoedaBR(l.preco_custo) : '-';
+        else row[c.label] = l[c.key] != null ? l[c.key] : '-';
+      });
+      return row;
+    });
+    const ws = XLSX.utils.json_to_sheet(dados);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Livros');
+    XLSX.writeFile(wb, `livros_${new Date().toISOString().slice(0, 10)}.xlsx`);
+    setModalExport(false);
+  };
+
+  const handleExportarPDF = () => {
+    const cols = getColunasSelecionadas();
+    const doc = new jsPDF({ orientation: cols.length > 6 ? 'landscape' : 'portrait' });
+    doc.setFontSize(14);
+    doc.text('Relatório de Livros', 14, 15);
+    doc.setFontSize(9);
+    doc.text(`Gerado em: ${new Date().toLocaleDateString('pt-BR')} — ${livrosOrdenados.length} registro(s)`, 14, 22);
+    autoTable(doc, {
+      head: [cols.map((c) => c.label)],
+      body: buildLinhas(cols),
+      startY: 28,
+      styles: { fontSize: 7, cellPadding: 2 },
+      headStyles: { fillColor: [228, 94, 38], textColor: 255, fontStyle: 'bold' },
+      alternateRowStyles: { fillColor: [253, 243, 234] },
+    });
+    doc.save(`livros_${new Date().toISOString().slice(0, 10)}.pdf`);
+    setModalExport(false);
+  };
+
 
   return (
     <div className="livros-page">
       <div className="page-header">
         <h1>Livros</h1>
         <div className="header-actions">
+          <button className="btn-export" onClick={() => setModalExport(true)} disabled={livrosOrdenados.length === 0}>
+            Exportar
+          </button>
           {isAdmin && <button className="btn-danger" onClick={handleLimparTodos}>Limpar todos</button>}
           {isAdmin && (
             <div className="csv-dropdown" ref={csvMenuRef}>
@@ -495,6 +568,70 @@ export default function Livros() {
               )}
             </tbody>
           </table>
+        </div>
+      )}
+
+      {modalExport && (
+        <div className="modal-overlay" onClick={() => setModalExport(false)}>
+          <div className="modal modal--export" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2>Exportar Livros</h2>
+              <button className="btn-close" onClick={() => setModalExport(false)}>✕</button>
+            </div>
+            <p className="export-subtitle">
+              Selecione as colunas que deseja incluir na exportação ({livrosOrdenados.length} registro(s))
+            </p>
+            <div className="export-cols-grid">
+              {COLUNAS_EXPORT.map((c) => (
+                <label key={c.key} className="export-col-item">
+                  <input
+                    type="checkbox"
+                    checked={!!colunasExport[c.key]}
+                    onChange={(e) =>
+                      setColunasExport((prev) => ({ ...prev, [c.key]: e.target.checked }))
+                    }
+                  />
+                  {c.label}
+                </label>
+              ))}
+            </div>
+            <div className="export-select-all">
+              <button
+                className="btn-link"
+                onClick={() =>
+                  setColunasExport(COLUNAS_EXPORT.reduce((acc, c) => ({ ...acc, [c.key]: true }), {}))
+                }
+              >
+                Marcar todas
+              </button>
+              <span className="export-sep">·</span>
+              <button
+                className="btn-link"
+                onClick={() =>
+                  setColunasExport(COLUNAS_EXPORT.reduce((acc, c) => ({ ...acc, [c.key]: false }), {}))
+                }
+              >
+                Desmarcar todas
+              </button>
+            </div>
+            <div className="modal-actions">
+              <button className="btn-secondary" onClick={() => setModalExport(false)}>Cancelar</button>
+              <button
+                className="btn-export-xlsx"
+                onClick={handleExportarXLSX}
+                disabled={getColunasSelecionadas().length === 0}
+              >
+                Exportar XLSX
+              </button>
+              <button
+                className="btn-export-pdf"
+                onClick={handleExportarPDF}
+                disabled={getColunasSelecionadas().length === 0}
+              >
+                Exportar PDF
+              </button>
+            </div>
+          </div>
         </div>
       )}
 
