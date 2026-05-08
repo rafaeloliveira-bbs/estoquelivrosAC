@@ -4,12 +4,13 @@ from datetime import date, datetime
 from decimal import Decimal, InvalidOperation
 from fastapi import APIRouter, Depends, HTTPException, status, Query, UploadFile, File
 from fastapi.responses import StreamingResponse
+from pydantic import BaseModel
 from sqlalchemy.orm import Session
 from app.database import get_db
 from app.schemas.movimentacao import MovimentacaoCriar, MovimentacaoResposta
 from app.models.movimentacao import Movimentacao
 from app.services.estoque import registrar_venda, registrar_compra, obter_estoque_total
-from app.crud.livro import obter_livro_por_id, obter_livro_por_codigo
+from app.crud.livro import obter_livro_por_id, obter_livro_por_codigo, pesquisar_livros
 from app.crud.filial import obter_filial_por_id, obter_filial_por_nome
 from app.auth.permissions import get_current_user, requer_role
 from app.config import logger
@@ -17,6 +18,20 @@ from app.utils.csv_parsing import (
     decodificar_csv, mapear_colunas_historico, mapear_colunas_historico_saidas,
     limpar_monetario, limpar_quantidade,
 )
+
+
+class _ItemNfImportar(BaseModel):
+    livro_id: int
+    quantidade: int
+    valor_unitario: float
+
+
+class _ImportarNfBody(BaseModel):
+    data: str
+    numero_nf: str
+    tipo: str
+    filial_id: int
+    itens: list[_ItemNfImportar]
 
 router = APIRouter(prefix="/movimentacoes", tags=["movimentações"])
 
@@ -643,3 +658,115 @@ async def limpar_historico(
     db.commit()
     logger.info(f"Histórico limpo: {removidos} registros removidos (filial={filial_id_efetivo}, tipo={tipo})")
     return {"removidos": removidos}
+
+
+# ─── Importação NF-e (PDF) ────────────────────────────────────────────────────
+
+@router.post("/preview-nf-pdf")
+async def preview_nf_pdf(
+    filial_id: int = Query(...),
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    user=Depends(requer_role(["gestor", "admin"])),
+):
+    """Extrai dados de um DANFE em PDF e retorna pré-visualização com itens e match de cadastro."""
+    if filial_id not in user["filial_ids"]:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Sem acesso a esta filial")
+
+    content = await file.read()
+
+    try:
+        from app.utils.pdf_nf import extrair_dados_nf
+        dados = extrair_dados_nf(content)
+    except ImportError:
+        raise HTTPException(status_code=500, detail="Biblioteca pdfplumber não instalada no servidor")
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Erro ao processar PDF: {str(e)}")
+
+    if not dados["itens"]:
+        raise HTTPException(
+            status_code=400,
+            detail="Nenhum item encontrado no PDF. Verifique se é um DANFE válido.",
+        )
+
+    itens_preview = []
+    avisos: list[str] = []
+
+    for item in dados["itens"]:
+        titulo_nf = item["titulo_nf"]
+        matches = pesquisar_livros(db, filial_id, titulo_nf, skip=0, limit=3)
+        livro = matches[0] if matches else None
+        if not livro:
+            avisos.append(f"Título '{titulo_nf}' não encontrado no cadastro da filial")
+        itens_preview.append({
+            "titulo_nf": titulo_nf,
+            "quantidade": item["quantidade"],
+            "valor_unitario": item["valor_unitario"],
+            "valor_total": item["valor_total"],
+            "livro_id": livro.id if livro else None,
+            "codigo_item": livro.codigo_item if livro else None,
+            "titulo_cadastro": livro.titulo if livro else None,
+            "match_encontrado": livro is not None,
+        })
+
+    return {
+        "data": dados["data"],
+        "numero_nf": dados["numero_nf"],
+        "itens": itens_preview,
+        "avisos": avisos,
+    }
+
+
+@router.post("/importar-nf-pdf")
+async def importar_nf_pdf(
+    body: _ImportarNfBody,
+    db: Session = Depends(get_db),
+    user=Depends(requer_role(["gestor", "admin"])),
+):
+    """Salva as movimentações extraídas de uma NF-e em PDF."""
+    if body.filial_id not in user["filial_ids"]:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Sem acesso a esta filial")
+
+    if body.tipo not in ("compra", "venda"):
+        raise HTTPException(status_code=400, detail="tipo deve ser 'compra' ou 'venda'")
+
+    data_mov = None
+    for fmt in ("%d/%m/%Y", "%Y-%m-%d"):
+        try:
+            data_mov = datetime.strptime(body.data, fmt).date()
+            break
+        except ValueError:
+            continue
+    if data_mov is None:
+        raise HTTPException(status_code=400, detail=f"Data inválida: '{body.data}'")
+
+    importados = 0
+    erros: list[str] = []
+
+    for i, item in enumerate(body.itens, start=1):
+        try:
+            livro = obter_livro_por_id(db, item.livro_id)
+            if not livro or livro.filial_id not in user["filial_ids"]:
+                erros.append(f"Item {i}: livro_id={item.livro_id} não encontrado na filial")
+                continue
+            mov = Movimentacao(
+                filial_id=body.filial_id,
+                livro_id=item.livro_id,
+                lote_id=None,
+                usuario_id=user["user_id"],
+                tipo=body.tipo,
+                quantidade=item.quantidade,
+                preco_unitario=Decimal(str(item.valor_unitario)),
+                documento_referencia=body.numero_nf or None,
+                observacoes=None,
+                data_movimento=datetime.combine(data_mov, datetime.min.time()),
+            )
+            db.add(mov)
+            db.commit()
+            importados += 1
+        except Exception as e:
+            db.rollback()
+            erros.append(f"Item {i}: {str(e)}")
+
+    logger.info(f"NF PDF: {importados} importados, {len(erros)} erros (filial={body.filial_id})")
+    return {"importados": importados, "erros": erros}

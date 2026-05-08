@@ -59,6 +59,13 @@ export const movimentacoesAPI = {
     }),
   limparHistorico: (filial_id, tipo) =>
     apiClient.delete('/movimentacoes/historico', { params: { filial_id, tipo } }),
+  previewNfPdf: (formData, filial_id) =>
+    apiClient.post('/movimentacoes/preview-nf-pdf', formData, {
+      params: { filial_id },
+      headers: { 'Content-Type': 'multipart/form-data' },
+    }),
+  importarNfPdf: (body) =>
+    apiClient.post('/movimentacoes/importar-nf-pdf', body),
 };
 
 export const relatoriosAPI = {

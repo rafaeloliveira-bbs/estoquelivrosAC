@@ -589,3 +589,69 @@
   border-color: #f68c3d;
   box-shadow: 0 0 0 3px rgba(246, 140, 61, 0.12);
 }
+
+/* ── Barra de importação NF (PDF) ── */
+.nf-pdf-bar {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  background: #f9f7f5;
+  border: 1.5px solid #e0cfc9;
+  border-radius: 8px;
+  margin-bottom: 1.5rem;
+  flex-wrap: wrap;
+}
+
+.nf-pdf-label {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: #554239;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+}
+
+.nf-pdf-filial {
+  padding: 0.5rem 0.65rem;
+  border: 1.5px solid #e0cfc9;
+  border-radius: 6px;
+  font-size: 0.9rem;
+  background: white;
+  cursor: pointer;
+  flex: 1;
+  min-width: 160px;
+  max-width: 280px;
+}
+
+.nf-pdf-filial:focus {
+  outline: none;
+  border-color: #f68c3d;
+  box-shadow: 0 0 0 3px rgba(246, 140, 61, 0.12);
+}
+
+.nf-pdf-erro {
+  font-size: 0.83rem;
+  color: #c0392b;
+  flex-basis: 100%;
+}
+
+/* ── Metadados da NF no preview ── */
+.nf-meta {
+  display: flex;
+  gap: 2rem;
+  margin-bottom: 1.25rem;
+  font-size: 0.92rem;
+  color: #4a3530;
+}
+
+.nf-meta strong { color: #554239; }
+
+/* ── Opções de tipo no preview NF ── */
+.nf-import-options {
+  margin: 1.25rem 0 0.5rem;
+}
+
+.nf-import-options .form-group {
+  max-width: 280px;
+}

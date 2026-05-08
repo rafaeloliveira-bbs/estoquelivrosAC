@@ -91,6 +91,15 @@ export default function Movimentacoes() {
   const [resultadoImportSaidas, setResultadoImportSaidas] = useState(null);
   const [erroImportSaidas, setErroImportSaidas] = useState('');
 
+  // ── NF PDF import ────────────────────────────────────────────────────────────
+  const fileInputNfRef = useRef(null);
+  const [filialNfId, setFilialNfId] = useState('');
+  const [tipoNf, setTipoNf] = useState('compra');
+  const [previewNf, setPreviewNf] = useState(null);
+  const [importandoNf, setImportandoNf] = useState(false);
+  const [resultadoImportNf, setResultadoImportNf] = useState(null);
+  const [erroImportNf, setErroImportNf] = useState('');
+
   useEffect(() => {
     const fechar = (e) => {
       if (csvMenuRef.current && !csvMenuRef.current.contains(e.target)) {
@@ -345,6 +354,63 @@ export default function Movimentacoes() {
     setErroImportSaidas('');
   };
 
+  // ── NF PDF handlers ──────────────────────────────────────────────────────────
+  const handleFileSelectNf = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setResultadoImportNf(null);
+    setErroImportNf('');
+    setImportandoNf(true);
+    const formData = new FormData();
+    formData.append('file', file);
+    try {
+      const res = await movimentacoesAPI.previewNfPdf(formData, filialNfId);
+      setPreviewNf(res.data);
+    } catch (err) {
+      setErroImportNf(err.response?.data?.detail || 'Erro ao processar o PDF da NF');
+    } finally {
+      setImportandoNf(false);
+    }
+    e.target.value = '';
+  };
+
+  const handleConfirmarImportacaoNf = async () => {
+    if (!previewNf) return;
+    const itensComMatch = previewNf.itens.filter((i) => i.match_encontrado);
+    if (itensComMatch.length === 0) return;
+    setImportandoNf(true);
+    setErroImportNf('');
+    try {
+      const res = await movimentacoesAPI.importarNfPdf({
+        data: previewNf.data,
+        numero_nf: previewNf.numero_nf,
+        tipo: tipoNf,
+        filial_id: parseInt(filialNfId),
+        itens: itensComMatch.map((i) => ({
+          livro_id: i.livro_id,
+          quantidade: i.quantidade,
+          valor_unitario: i.valor_unitario,
+        })),
+      });
+      setResultadoImportNf(res.data);
+      setPreviewNf(null);
+      setFilialNfId('');
+      setTipoNf('compra');
+      setDataInicio('');
+      setDataFim('');
+      setSecao('historico');
+    } catch (err) {
+      setErroImportNf(err.response?.data?.detail || 'Erro ao importar NF');
+    } finally {
+      setImportandoNf(false);
+    }
+  };
+
+  const handleCancelarPreviewNf = () => {
+    setPreviewNf(null);
+    setErroImportNf('');
+  };
+
   return (
     <div className="movimentacoes">
       <h1>Movimentações</h1>
@@ -386,6 +452,16 @@ export default function Movimentacoes() {
                 <><br /><strong>Erros:</strong><ul>{resultadoImportSaidas.erros.map((e, i) => <li key={i}>{e}</li>)}</ul></>
               )}
               <button className="btn-close-result" onClick={() => setResultadoImportSaidas(null)}>✕</button>
+            </div>
+          )}
+
+          {resultadoImportNf && (
+            <div className={`import-result ${resultadoImportNf.erros?.length ? 'import-result--warn' : 'import-result--ok'}`}>
+              <strong>Importação de NF concluída:</strong> {resultadoImportNf.importados} registro(s).
+              {resultadoImportNf.erros?.length > 0 && (
+                <><br /><strong>Erros:</strong><ul>{resultadoImportNf.erros.map((e, i) => <li key={i}>{e}</li>)}</ul></>
+              )}
+              <button className="btn-close-result" onClick={() => setResultadoImportNf(null)}>✕</button>
             </div>
           )}
 
@@ -541,7 +617,102 @@ export default function Movimentacoes() {
             </div>
           )}
 
-          {!previewEntradas && !previewSaidas && (
+          {previewNf && (
+            <div className="preview-section">
+              <h2>Pré-visualização — NF Nº {previewNf.numero_nf}</h2>
+              <div className="nf-meta">
+                <span><strong>Data de emissão:</strong> {previewNf.data}</span>
+                <span><strong>Nº NF:</strong> {previewNf.numero_nf}</span>
+              </div>
+              {previewNf.avisos?.length > 0 && (
+                <div className="warnings">
+                  <strong>Avisos:</strong>
+                  <ul>{previewNf.avisos.map((a, i) => <li key={i}>{a}</li>)}</ul>
+                </div>
+              )}
+              <div className="preview-table">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Título (NF)</th>
+                      <th>Item no cadastro</th>
+                      <th>Qnt</th>
+                      <th>Valor Unit.</th>
+                      <th>Valor Total</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {previewNf.itens.map((item, i) => (
+                      <tr key={i}>
+                        <td>{item.titulo_nf}</td>
+                        <td className={!item.match_encontrado ? 'error-cell' : ''}>
+                          {item.match_encontrado
+                            ? `${item.codigo_item} — ${item.titulo_cadastro}`
+                            : 'Não encontrado no cadastro'}
+                        </td>
+                        <td>{item.quantidade}</td>
+                        <td>R$ {formatMoedaBR(item.valor_unitario)}</td>
+                        <td>R$ {formatMoedaBR(item.valor_total)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              <div className="nf-import-options">
+                <div className="form-group">
+                  <label htmlFor="tipo-nf">Tipo de movimentação *</label>
+                  <select id="tipo-nf" value={tipoNf} onChange={(e) => setTipoNf(e.target.value)}>
+                    <option value="compra">Compra</option>
+                    <option value="venda">Venda</option>
+                  </select>
+                </div>
+              </div>
+              {erroImportNf && <div className="alert-error">{erroImportNf}</div>}
+              <div className="preview-actions">
+                <button
+                  className="btn-primary"
+                  onClick={handleConfirmarImportacaoNf}
+                  disabled={importandoNf || previewNf.itens.every((i) => !i.match_encontrado)}
+                >
+                  {importandoNf ? 'Importando...' : 'Confirmar Importação'}
+                </button>
+                <button className="btn-secondary" onClick={handleCancelarPreviewNf}>Cancelar</button>
+              </div>
+            </div>
+          )}
+
+          {!previewEntradas && !previewSaidas && !previewNf && isAdmin && (
+            <div className="nf-pdf-bar">
+              <span className="nf-pdf-label">Importar NF (PDF)</span>
+              <select
+                value={filialNfId}
+                onChange={(e) => setFilialNfId(e.target.value)}
+                className="nf-pdf-filial"
+              >
+                <option value="">— Filial —</option>
+                {filiais.map((f) => (
+                  <option key={f.id} value={f.id}>{f.id} — {f.nome}</option>
+                ))}
+              </select>
+              <button
+                className="btn-secondary"
+                onClick={() => fileInputNfRef.current?.click()}
+                disabled={!filialNfId || importandoNf}
+              >
+                {importandoNf ? 'Analisando...' : 'Selecionar PDF'}
+              </button>
+              <input
+                ref={fileInputNfRef}
+                type="file"
+                accept=".pdf"
+                style={{ display: 'none' }}
+                onChange={handleFileSelectNf}
+              />
+              {erroImportNf && <span className="nf-pdf-erro">{erroImportNf}</span>}
+            </div>
+          )}
+
+          {!previewEntradas && !previewSaidas && !previewNf && (
             <div className="registrar-grid">
               {/* ── COMPRA ── */}
               <div className="registrar-col">
