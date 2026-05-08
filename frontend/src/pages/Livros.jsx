@@ -1,8 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import * as XLSX from 'xlsx';
-import jsPDF from 'jspdf';
-import autoTable from 'jspdf-autotable';
 import { livrosAPI, categoriasAPI, filiaisAPI } from '../api/endpoints';
 import { getUserRole, getUser } from '../utils/auth';
 import { parseMoeda, formatMoedaBR } from '../utils/moeda';
@@ -299,7 +296,8 @@ export default function Livros() {
       })
     );
 
-  const handleExportarXLSX = () => {
+  const handleExportarXLSX = async () => {
+    const { utils, writeFile } = await import('xlsx');
     const cols = getColunasSelecionadas();
     const dados = livrosOrdenados.map((l) => {
       const row = {};
@@ -310,14 +308,16 @@ export default function Livros() {
       });
       return row;
     });
-    const ws = XLSX.utils.json_to_sheet(dados);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, 'Livros');
-    XLSX.writeFile(wb, `livros_${new Date().toISOString().slice(0, 10)}.xlsx`);
+    const ws = utils.json_to_sheet(dados);
+    const wb = utils.book_new();
+    utils.book_append_sheet(wb, ws, 'Livros');
+    writeFile(wb, `livros_${new Date().toISOString().slice(0, 10)}.xlsx`);
     setModalExport(false);
   };
 
-  const handleExportarPDF = () => {
+  const handleExportarPDF = async () => {
+    const { default: jsPDF } = await import('jspdf');
+    const { default: autoTable } = await import('jspdf-autotable');
     const cols = getColunasSelecionadas();
     const doc = new jsPDF({ orientation: cols.length > 6 ? 'landscape' : 'portrait' });
     doc.setFontSize(14);
