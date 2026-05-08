@@ -200,6 +200,8 @@ async def preview_historico_entradas_csv(
         preview_rows.append(row)
 
     warnings = []
+    if not col_map["data"]:
+        warnings.append("Coluna obrigatória 'Data' não encontrada — a importação falhará sem ela")
     if not col_map["codigo_item"]:
         warnings.append("Coluna obrigatória 'Código do Item' não encontrada")
     if not col_map["quantidade"]:
@@ -314,19 +316,21 @@ async def importar_historico_entradas_csv(
                     f"Linha {i}: Título do CSV ('{titulo_csv}') difere do cadastro ('{livro.titulo}') — importado assim mesmo"
                 )
 
-            # Data — tenta DD/MM/AAAA, AAAA-MM-DD e DD-MM-AAAA
+            # Data — obrigatório
             data_str = _get(row, "data")
+            if not data_str:
+                erros.append(f"Linha {i}: 'Data' é obrigatório")
+                continue
             data_entrada = None
-            if data_str:
-                for _fmt in ("%d/%m/%Y", "%Y-%m-%d", "%d-%m-%Y", "%d/%m/%y"):
-                    try:
-                        data_entrada = datetime.strptime(data_str.strip(), _fmt).date()
-                        break
-                    except ValueError:
-                        continue
-                if data_entrada is None:
-                    erros.append(f"Linha {i}: Data inválida '{data_str}' (esperado DD/MM/AAAA)")
+            for _fmt in ("%d/%m/%Y", "%Y-%m-%d", "%d-%m-%Y", "%d/%m/%y"):
+                try:
+                    data_entrada = datetime.strptime(data_str.strip(), _fmt).date()
+                    break
+                except ValueError:
                     continue
+            if data_entrada is None:
+                erros.append(f"Linha {i}: Data inválida '{data_str}' (esperado DD/MM/AAAA)")
+                continue
 
             # Quantidade — obrigatório
             qtd_raw = _get(row, "quantidade")
@@ -357,10 +361,7 @@ async def importar_historico_entradas_csv(
             nf_raw = _get(row, "nf")
             observacao = _get(row, "observacao") or None
 
-            data_mov = (
-                datetime.combine(data_entrada, datetime.min.time())
-                if data_entrada else datetime.utcnow()
-            )
+            data_mov = datetime.combine(data_entrada, datetime.min.time())
             mov = Movimentacao(
                 filial_id=filial_id_efetivo,
                 livro_id=livro.id,
@@ -438,6 +439,8 @@ async def preview_historico_saidas_csv(
         preview_rows.append(row)
 
     warnings = []
+    if not col_map["data"]:
+        warnings.append("Coluna obrigatória 'Data' não encontrada — a importação falhará sem ela")
     if not col_map["codigo_item"]:
         warnings.append("Coluna obrigatória 'Item' não encontrada")
     if not col_map["quantidade"]:
@@ -544,19 +547,21 @@ async def importar_historico_saidas_csv(
                     f"Linha {i}: Título do CSV ('{titulo_csv}') difere do cadastro ('{livro.titulo}') — importado assim mesmo"
                 )
 
-            # Data — tenta DD/MM/AAAA, AAAA-MM-DD e DD-MM-AAAA
+            # Data — obrigatório
             data_str = _get(row, "data")
+            if not data_str:
+                erros.append(f"Linha {i}: 'Data' é obrigatório")
+                continue
             data_venda = None
-            if data_str:
-                for _fmt in ("%d/%m/%Y", "%Y-%m-%d", "%d-%m-%Y", "%d/%m/%y"):
-                    try:
-                        data_venda = datetime.strptime(data_str.strip(), _fmt).date()
-                        break
-                    except ValueError:
-                        continue
-                if data_venda is None:
-                    erros.append(f"Linha {i}: Data inválida '{data_str}' (esperado DD/MM/AAAA)")
+            for _fmt in ("%d/%m/%Y", "%Y-%m-%d", "%d-%m-%Y", "%d/%m/%y"):
+                try:
+                    data_venda = datetime.strptime(data_str.strip(), _fmt).date()
+                    break
+                except ValueError:
                     continue
+            if data_venda is None:
+                erros.append(f"Linha {i}: Data inválida '{data_str}' (esperado DD/MM/AAAA)")
+                continue
 
             # Qnt — obrigatório
             qtd_raw = _get(row, "quantidade")
@@ -586,10 +591,7 @@ async def importar_historico_saidas_csv(
 
             observacao = _get(row, "observacao") or None
 
-            data_mov = (
-                datetime.combine(data_venda, datetime.min.time())
-                if data_venda else datetime.utcnow()
-            )
+            data_mov = datetime.combine(data_venda, datetime.min.time())
             mov = Movimentacao(
                 filial_id=filial_id_efetivo,
                 livro_id=livro.id,
