@@ -274,6 +274,10 @@ async def importar_historico_entradas_csv(
         col = col_map.get(field)
         return row.get(col, "").strip() if col else ""
 
+    def _normalizar(s: str) -> str:
+        import unicodedata
+        return ' '.join(unicodedata.normalize('NFKC', s).split()).lower()
+
     importados = 0
     avisos: list[str] = []
     erros: list[str] = []
@@ -299,13 +303,13 @@ async def importar_historico_entradas_csv(
 
             # Validações opcionais de Grade e Título
             grade_csv = _get(row, "grade")
-            if grade_csv and livro.grade and grade_csv.strip().lower() != livro.grade.strip().lower():
+            if grade_csv and livro.grade and _normalizar(grade_csv) != _normalizar(livro.grade):
                 avisos.append(
                     f"Linha {i}: Grade do CSV ('{grade_csv}') difere do cadastro ('{livro.grade}') — importado assim mesmo"
                 )
 
             titulo_csv = _get(row, "titulo")
-            if titulo_csv and titulo_csv.strip().lower() != livro.titulo.strip().lower():
+            if titulo_csv and _normalizar(titulo_csv) != _normalizar(livro.titulo):
                 avisos.append(
                     f"Linha {i}: Título do CSV ('{titulo_csv}') difere do cadastro ('{livro.titulo}') — importado assim mesmo"
                 )
@@ -503,6 +507,10 @@ async def importar_historico_saidas_csv(
         col = col_map.get(field)
         return row.get(col, "").strip() if col else ""
 
+    def _normalizar(s: str) -> str:
+        import unicodedata
+        return ' '.join(unicodedata.normalize('NFKC', s).split()).lower()
+
     importados = 0
     avisos: list[str] = []
     erros: list[str] = []
@@ -527,7 +535,7 @@ async def importar_historico_saidas_csv(
 
             # Validação opcional de título
             titulo_csv = _get(row, "titulo")
-            if titulo_csv and titulo_csv.strip().lower() != livro.titulo.strip().lower():
+            if titulo_csv and _normalizar(titulo_csv) != _normalizar(livro.titulo):
                 avisos.append(
                     f"Linha {i}: Título do CSV ('{titulo_csv}') difere do cadastro ('{livro.titulo}') — importado assim mesmo"
                 )
