@@ -1,5 +1,6 @@
-from sqlalchemy.orm import Session, joinedload
-from sqlalchemy import func, extract, and_
+from sqlalchemy.orm import Session, joinedload, contains_eager
+from sqlalchemy import func, extract, and_, case, cast
+from sqlalchemy import Date as SADate
 from app.models.movimentacao import Movimentacao
 from app.models.livro import Livro
 from app.models.lote import Lote
@@ -72,32 +73,46 @@ def relatorio_movimentacoes(
     data_fim: date,
     tipo: str | None = None,
 ) -> list:
+    # Para compras com lote, a data efetiva é data_entrada do lote (corrige registros
+    # antigos onde data_movimento foi gravada como data do import em vez da data real)
+    data_efetiva = case(
+        (and_(Movimentacao.tipo == 'compra', Lote.data_entrada.isnot(None)),
+         cast(Lote.data_entrada, SADate)),
+        else_=cast(Movimentacao.data_movimento, SADate),
+    )
+
     filters = [
         _filial_clause(Movimentacao, filial_id),
-        Movimentacao.data_movimento <= data_fim,
+        data_efetiva <= data_fim,
     ]
     if data_inicio:
-        filters.append(Movimentacao.data_movimento >= data_inicio)
+        filters.append(data_efetiva >= data_inicio)
     if tipo:
         filters.append(Movimentacao.tipo == tipo.lower())
 
     movs = (
         db.query(Movimentacao)
+        .outerjoin(Movimentacao.lote)
         .options(
-            joinedload(Movimentacao.lote).joinedload(Lote.livro),
+            contains_eager(Movimentacao.lote).joinedload(Lote.livro),
             joinedload(Movimentacao.livro),
             joinedload(Movimentacao.usuario),
         )
         .filter(*filters)
-        .order_by(Movimentacao.data_movimento.desc())
+        .order_by(data_efetiva.desc())
         .all()
     )
 
     result = []
     for m in movs:
         livro_obj = (m.lote.livro if m.lote and m.lote.livro else m.livro)
+        dt = (
+            datetime.combine(m.lote.data_entrada, datetime.min.time())
+            if m.tipo == 'compra' and m.lote and m.lote.data_entrada
+            else m.data_movimento
+        )
         result.append({
-            "data": m.data_movimento.strftime("%d/%m/%Y %H:%M"),
+            "data": dt.strftime("%d/%m/%Y %H:%M"),
             "tipo": m.tipo.upper(),
             "livro_titulo": livro_obj.titulo if livro_obj else "N/A",
             "isbn": livro_obj.isbn if livro_obj else "N/A",
