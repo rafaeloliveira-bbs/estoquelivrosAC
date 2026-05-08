@@ -26,7 +26,7 @@ router = APIRouter(prefix="/livros", tags=["livros"])
 _COLUNAS_CSV = [
     "Item", "Títulos", "Fornecedor", "Editora",
     "Classificação", "Tipo do material", "Grade", "ISBN 13", "Descontinuado?",
-    "Quantidade", "Preço Unitário", "Filial",
+    "Quantidade", "Preço Unitário Médio", "Filial",
 ]
 
 
@@ -47,7 +47,7 @@ async def baixar_template_csv(user=Depends(get_current_user)):
         "ISBN 13": "9788500000000",
         "Descontinuado?": "Não",
         "Quantidade": "50",
-        "Preço Unitário": "25.90",
+        "Preço Unitário Médio": "25.90",
         "Filial": "",
     })
     output.seek(0)
@@ -247,8 +247,6 @@ async def importar_csv(
             if qtd_raw:
                 try:
                     qtd = int(qtd_raw)
-                    if qtd <= 0:
-                        raise ValueError("quantidade deve ser > 0")
                     preco_raw = _get(row, "preco_unitario")
                     preco = Decimal(limpar_monetario(preco_raw)) if preco_raw else Decimal("0.00")
                     numero_lote = f"{numero_lote_base}-{codigo_item or livro_id}-{i}"

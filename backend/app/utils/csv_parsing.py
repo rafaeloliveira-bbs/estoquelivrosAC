@@ -73,7 +73,8 @@ def mapear_colunas_livros(fieldnames: list[str]) -> dict:
             col_map["descontinuado"] = col
         elif c in ("quantidade", "qtd", "qty"):
             col_map["quantidade"] = col
-        elif c in ("preço unitário", "preco_unitario", "preco unitario", "preço", "preco"):
+        elif c in ("preço unitário médio", "preco unitario medio", "preco unitario medio",
+                   "preço unitário", "preco_unitario", "preco unitario", "preço", "preco"):
             col_map["preco_unitario"] = col
         elif c in ("filial", "filial_id", "id da filial"):
             col_map["filial"] = col
