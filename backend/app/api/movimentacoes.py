@@ -7,6 +7,7 @@ from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 from app.database import get_db
 from app.schemas.movimentacao import MovimentacaoCriar, MovimentacaoResposta
+from app.models.movimentacao import Movimentacao
 from app.services.estoque import registrar_venda, registrar_compra, obter_estoque_total
 from app.crud.livro import obter_livro_por_id, obter_livro_por_codigo
 from app.crud.filial import obter_filial_por_id, obter_filial_por_nome
@@ -345,23 +346,27 @@ async def importar_historico_entradas_csv(
                 erros.append(f"Linha {i}: Valor Unitário inválido '{valor_raw}'")
                 continue
 
-            # Nº NF → número do lote
             nf_raw = _get(row, "nf")
-            numero_lote = nf_raw if nf_raw else f"{lote_base}-{i}"
-
             observacao = _get(row, "observacao") or None
 
-            registrar_compra(
-                db,
+            data_mov = (
+                datetime.combine(data_entrada, datetime.min.time())
+                if data_entrada else datetime.utcnow()
+            )
+            mov = Movimentacao(
+                filial_id=filial_id_efetivo,
                 livro_id=livro.id,
+                lote_id=None,
+                usuario_id=user["user_id"],
+                tipo="compra",
                 quantidade=quantidade,
                 preco_unitario=valor_unitario,
-                usuario_id=user["user_id"],
-                filial_id=filial_id_efetivo,
-                numero_lote=numero_lote,
-                data_entrada=data_entrada,
+                documento_referencia=nf_raw or None,
                 observacoes=observacao,
+                data_movimento=data_mov,
             )
+            db.add(mov)
+            db.commit()
             importados += 1
 
         except Exception as e:
@@ -565,16 +570,23 @@ async def importar_historico_saidas_csv(
 
             observacao = _get(row, "observacao") or None
 
-            registrar_venda(
-                db,
-                livro_id=livro.id,
-                quantidade=quantidade,
-                usuario_id=user["user_id"],
-                filial_id=filial_id_efetivo,
-                observacoes=observacao,
-                preco_venda=valor_unitario,
-                data_venda=data_venda,
+            data_mov = (
+                datetime.combine(data_venda, datetime.min.time())
+                if data_venda else datetime.utcnow()
             )
+            mov = Movimentacao(
+                filial_id=filial_id_efetivo,
+                livro_id=livro.id,
+                lote_id=None,
+                usuario_id=user["user_id"],
+                tipo="venda",
+                quantidade=quantidade,
+                preco_unitario=valor_unitario,
+                observacoes=observacao,
+                data_movimento=data_mov,
+            )
+            db.add(mov)
+            db.commit()
             importados += 1
 
         except Exception as e:

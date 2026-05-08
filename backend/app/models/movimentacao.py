@@ -8,7 +8,8 @@ class Movimentacao(Base):
     
     id = Column(Integer, primary_key=True, index=True)
     filial_id = Column(Integer, ForeignKey("filial.id"), nullable=False)
-    lote_id = Column(Integer, ForeignKey("lote.id"), nullable=False)
+    lote_id = Column(Integer, ForeignKey("lote.id"), nullable=True)
+    livro_id = Column(Integer, ForeignKey("livro.id"), nullable=True)
     usuario_id = Column(Integer, ForeignKey("usuario.id"), nullable=False)
     
     tipo = Column(String(20), nullable=False)  # compra/devolucao/venda/emprestimo/ajuste
@@ -24,5 +25,6 @@ class Movimentacao(Base):
     
     # Relationships
     filial = relationship("Filial", back_populates="movimentacoes")
-    lote = relationship("Lote", back_populates="movimentacoes")
+    lote = relationship("Lote", back_populates="movimentacoes", foreign_keys=[lote_id])
+    livro = relationship("Livro", foreign_keys=[livro_id])
     usuario = relationship("Usuario", back_populates="movimentacoes")

@@ -5,7 +5,8 @@ from decimal import Decimal
 
 class MovimentacaoBase(BaseModel):
     filial_id: int
-    lote_id: int
+    lote_id: Optional[int] = None
+    livro_id: Optional[int] = None
     usuario_id: int
     tipo: str  # compra/devolucao/venda/emprestimo/ajuste
     quantidade: int

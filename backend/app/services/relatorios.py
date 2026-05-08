@@ -85,6 +85,7 @@ def relatorio_movimentacoes(
         db.query(Movimentacao)
         .options(
             joinedload(Movimentacao.lote).joinedload(Lote.livro),
+            joinedload(Movimentacao.livro),
             joinedload(Movimentacao.usuario),
         )
         .filter(*filters)
@@ -94,11 +95,12 @@ def relatorio_movimentacoes(
 
     result = []
     for m in movs:
+        livro_obj = (m.lote.livro if m.lote and m.lote.livro else m.livro)
         result.append({
             "data": m.data_movimento.strftime("%d/%m/%Y %H:%M"),
             "tipo": m.tipo.upper(),
-            "livro_titulo": m.lote.livro.titulo if m.lote and m.lote.livro else "N/A",
-            "isbn": m.lote.livro.isbn if m.lote and m.lote.livro else "N/A",
+            "livro_titulo": livro_obj.titulo if livro_obj else "N/A",
+            "isbn": livro_obj.isbn if livro_obj else "N/A",
             "quantidade": m.quantidade,
             "preco_unitario": float(m.preco_unitario),
             "valor_total": float(m.quantidade * m.preco_unitario),
@@ -115,16 +117,20 @@ def relatorio_top_vendas(
     mes: int = None,
     ano: int = None
 ) -> list:
-    query = db.query(
-        Livro.titulo,
-        Livro.isbn,
-        func.sum(Movimentacao.quantidade).label("total_qtd"),
-        func.sum(Movimentacao.quantidade * Movimentacao.preco_unitario).label("total_valor")
-    ).join(Lote, Lote.livro_id == Livro.id).join(
-        Movimentacao, Movimentacao.lote_id == Lote.id
-    ).filter(
-        _filial_clause(Livro, filial_id),
-        Movimentacao.tipo == "venda"
+    query = (
+        db.query(
+            Livro.titulo,
+            Livro.isbn,
+            func.sum(Movimentacao.quantidade).label("total_qtd"),
+            func.sum(Movimentacao.quantidade * Movimentacao.preco_unitario).label("total_valor"),
+        )
+        .select_from(Movimentacao)
+        .outerjoin(Lote, Lote.id == Movimentacao.lote_id)
+        .join(Livro, Livro.id == func.coalesce(Lote.livro_id, Movimentacao.livro_id))
+        .filter(
+            _filial_clause(Movimentacao, filial_id),
+            Movimentacao.tipo == "venda",
+        )
     )
 
     if mes:
@@ -247,10 +253,10 @@ def relatorio_evolucao_estoque(db: Session, filial_id) -> dict:
             Movimentacao.quantidade,
             Movimentacao.preco_unitario,
             Movimentacao.data_movimento,
-            Lote.livro_id,
+            func.coalesce(Lote.livro_id, Movimentacao.livro_id).label("livro_id"),
             Lote.data_entrada,
         )
-        .join(Lote, Movimentacao.lote_id == Lote.id)
+        .outerjoin(Lote, Movimentacao.lote_id == Lote.id)
         .filter(_filial_clause(Movimentacao, filial_id))
         .all()
     )
