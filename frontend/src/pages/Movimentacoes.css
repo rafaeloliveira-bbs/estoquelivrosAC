@@ -777,7 +777,6 @@
 }
 
 .preview-table--nf table {
-  overflow: visible;
   border-radius: 0;
   box-shadow: none;
 }
