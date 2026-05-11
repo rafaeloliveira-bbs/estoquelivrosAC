@@ -84,6 +84,7 @@ export default function Filiais() {
 
       {sucesso && <div className="alert-success">{sucesso}</div>}
 
+      <div className="table-wrapper">
       <table className="filiais-table">
         <thead>
           <tr>
@@ -122,15 +123,18 @@ export default function Filiais() {
           )}
         </tbody>
       </table>
+      </div>
 
       {modal && (
         <div className="modal-overlay" onClick={fecharModal}>
           <div className="modal" onClick={(e) => e.stopPropagation()}>
-            <h2>{modal === 'criar' ? 'Nova Filial' : 'Editar Filial'}</h2>
-
-            {erro && <div className="alert-error">{erro}</div>}
+            <div className="modal-header">
+              <h2>{modal === 'criar' ? 'Nova Filial' : 'Editar Filial'}</h2>
+              <button className="btn-close" onClick={fecharModal}>✕</button>
+            </div>
 
             <form onSubmit={handleSalvar} className="filiais-form">
+              {erro && <div className="alert-error">{erro}</div>}
               <div className="form-group">
                 <label>Nome *</label>
                 <input
@@ -165,11 +169,9 @@ export default function Filiais() {
               </div>
 
               <div className="modal-actions">
+                <button type="button" className="btn-secondary" onClick={fecharModal}>Cancelar</button>
                 <button type="submit" className="btn-primary">
                   {modal === 'criar' ? 'Cadastrar' : 'Salvar'}
-                </button>
-                <button type="button" className="btn-secondary" onClick={fecharModal}>
-                  Cancelar
                 </button>
               </div>
             </form>

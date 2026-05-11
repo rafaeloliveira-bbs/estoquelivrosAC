@@ -1,3 +1,4 @@
+/* ── Page layout ─────────────────────────────────────────── */
 .usuarios-page {
   padding: 2rem;
   max-width: 1200px;
@@ -14,7 +15,7 @@
 .page-header h1 {
   font-size: 1.75rem;
   font-weight: 700;
-  color: #1a1a2e;
+  color: #554239;
   margin: 0;
 }
 
@@ -24,42 +25,45 @@
   align-items: center;
 }
 
+/* ── Table ───────────────────────────────────────────────── */
 .table-wrapper {
   overflow-x: auto;
-  border-radius: 8px;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+  background: white;
+  border-radius: 10px;
+  box-shadow: 0 2px 10px rgba(85, 66, 57, 0.08);
 }
 
 .data-table {
   width: 100%;
   border-collapse: collapse;
-  background: #fff;
   font-size: 0.875rem;
 }
 
 .data-table th {
-  background: #f5f6fa;
-  padding: 0.75rem 1rem;
+  background: #fdf3ea;
+  padding: 0.85rem 1rem;
   text-align: left;
-  font-weight: 600;
-  color: #555;
-  border-bottom: 1px solid #e8eaf0;
+  font-weight: 700;
+  color: #554239;
+  border-bottom: 2px solid #f5ede6;
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
   white-space: nowrap;
 }
 
 .data-table td {
   padding: 0.75rem 1rem;
-  border-bottom: 1px solid #f0f1f5;
-  color: #333;
+  border-bottom: 1px solid #f5ede6;
+  color: #4a3530;
 }
 
-.data-table tbody tr:hover {
-  background: #fafbff;
-}
+.data-table tr:last-child td { border-bottom: none; }
+.data-table tbody tr:hover td { background: #fdf8f4; }
 
 .data-table td.empty {
   text-align: center;
-  color: #aaa;
+  color: #b08880;
   padding: 2rem;
 }
 
@@ -68,84 +72,118 @@
   gap: 0.5rem;
 }
 
+/* ── Badges ──────────────────────────────────────────────── */
 .badge {
   display: inline-block;
-  padding: 0.2rem 0.6rem;
-  border-radius: 999px;
-  font-size: 0.75rem;
-  font-weight: 600;
+  padding: 0.2rem 0.65rem;
+  border-radius: 12px;
+  font-size: 0.78rem;
+  font-weight: 700;
   text-transform: capitalize;
 }
 
-.badge-green  { background: #e6f9f0; color: #1a8a4a; }
-.badge-gray   { background: #f0f0f0; color: #777; }
-.badge-blue   { background: #e8f0fe; color: #1a56db; }
-.badge-admin  { background: #fde8e8; color: #c81e1e; }
+.badge-green { background: #e3f5ea; color: #1e6b32; }
+.badge-gray  { background: #f0ebe8; color: #7a5c52; }
+.badge-blue  { background: #eaf2ff; color: #1a56db; }
+.badge-admin { background: #fdecea; color: #c0392b; }
 
+/* ── Buttons ─────────────────────────────────────────────── */
 .btn-primary {
-  background: #4f46e5;
-  color: #fff;
+  background: #e45e26;
+  color: white;
   border: none;
-  padding: 0.55rem 1.1rem;
+  padding: 0.6rem 1.2rem;
   border-radius: 6px;
-  font-size: 0.875rem;
-  font-weight: 600;
+  font-size: 0.9rem;
+  font-weight: 700;
   cursor: pointer;
-  transition: background 0.15s;
+  transition: background 0.2s;
 }
-.btn-primary:hover { background: #4338ca; }
+.btn-primary:hover { background: #c94b1b; }
 
 .btn-secondary {
-  background: #fff;
-  color: #4f46e5;
-  border: 1px solid #4f46e5;
-  padding: 0.55rem 1.1rem;
+  background: #f0ebe8;
+  color: #554239;
+  border: none;
+  padding: 0.6rem 1.2rem;
   border-radius: 6px;
-  font-size: 0.875rem;
+  font-size: 0.9rem;
   font-weight: 600;
   cursor: pointer;
-  transition: background 0.15s;
+  transition: background 0.2s;
 }
-.btn-secondary:hover { background: #f5f3ff; }
+.btn-secondary:hover { background: #e0d4ce; }
 
 .btn-edit {
-  background: #e8f0fe;
-  color: #1a56db;
+  background: #fff3e0;
+  color: #e45e26;
   border: none;
   padding: 0.35rem 0.75rem;
   border-radius: 5px;
-  font-size: 0.8rem;
+  font-size: 0.82rem;
   font-weight: 600;
   cursor: pointer;
+  transition: background 0.2s;
 }
-.btn-edit:hover { background: #d1e3fd; }
+.btn-edit:hover { background: #ffe0b2; }
 
 .btn-delete {
-  background: #fde8e8;
-  color: #c81e1e;
+  background: #fdecea;
+  color: #c0392b;
   border: none;
   padding: 0.35rem 0.75rem;
   border-radius: 5px;
-  font-size: 0.8rem;
+  font-size: 0.82rem;
   font-weight: 600;
   cursor: pointer;
+  transition: background 0.2s;
 }
-.btn-delete:hover { background: #fbd5d5; }
+.btn-delete:hover { background: #fad4d1; }
 
 .btn-close {
   background: none;
   border: none;
-  font-size: 1.1rem;
+  font-size: 1.3rem;
   cursor: pointer;
-  color: #888;
+  color: #b08880;
   padding: 0.25rem;
   line-height: 1;
+  transition: color 0.2s;
+}
+.btn-close:hover { color: #554239; }
+
+/* ── Alerts ──────────────────────────────────────────────── */
+.alert-success {
+  background: #e3f5ea;
+  color: #1e6b32;
+  padding: 0.75rem 1rem;
+  border-radius: 6px;
+  margin-bottom: 1rem;
+  border-left: 3px solid #47b972;
+  font-size: 0.875rem;
 }
 
+.alert-error {
+  background: #fdecea;
+  color: #c0392b;
+  padding: 0.75rem 1rem;
+  border-radius: 6px;
+  border-left: 3px solid #ef464b;
+  font-size: 0.875rem;
+}
+
+.loading {
+  text-align: center;
+  padding: 3rem;
+  color: #b08880;
+  font-size: 0.95rem;
+}
+
+/* ── Modal ───────────────────────────────────────────────── */
 .modal-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.45);
+  background: rgba(85, 66, 57, 0.5);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -153,14 +191,14 @@
 }
 
 .modal {
-  background: #fff;
-  border-radius: 10px;
-  width: 500px;
+  background: white;
+  border-radius: 12px;
+  width: 520px;
   max-width: 95vw;
   max-height: 90vh;
   overflow-y: auto;
   padding: 0;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.18);
+  box-shadow: 0 12px 40px rgba(85, 66, 57, 0.25);
 }
 
 .modal-header {
@@ -168,18 +206,19 @@
   justify-content: space-between;
   align-items: center;
   padding: 1.25rem 1.5rem;
-  border-bottom: 1px solid #eee;
+  border-bottom: 2px solid #f5ede6;
 }
 
 .modal-header h2 {
   margin: 0;
-  font-size: 1.15rem;
+  font-size: 1.2rem;
   font-weight: 700;
-  color: #1a1a2e;
+  color: #554239;
 }
 
+/* ── Form ────────────────────────────────────────────────── */
 .modal-form {
-  padding: 1.5rem;
+  padding: 1.25rem 1.5rem 1.5rem;
   display: flex;
   flex-direction: column;
   gap: 1rem;
@@ -194,80 +233,77 @@
 .form-group {
   display: flex;
   flex-direction: column;
-  gap: 0.35rem;
+  gap: 0.4rem;
 }
 
 .form-group label {
   font-size: 0.8rem;
-  font-weight: 600;
-  color: #555;
+  font-weight: 700;
+  color: #554239;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
 }
 
 .form-group input,
 .form-group select {
-  padding: 0.5rem 0.75rem;
-  border: 1px solid #ddd;
+  padding: 0.6rem 0.75rem;
+  border: 1.5px solid #e0cfc9;
   border-radius: 6px;
-  font-size: 0.875rem;
+  font-size: 0.9rem;
+  background: white;
   outline: none;
-  transition: border-color 0.15s;
+  transition: border-color 0.2s, box-shadow 0.2s;
+  font-family: inherit;
 }
 
 .form-group input:focus,
 .form-group select:focus {
-  border-color: #4f46e5;
+  border-color: #f68c3d;
+  box-shadow: 0 0 0 3px rgba(246, 140, 61, 0.12);
 }
 
+.form-group input::placeholder {
+  color: #c9b8b0;
+  font-style: italic;
+  font-size: 0.85rem;
+}
+
+/* ── Checkbox inline (ativo) ─────────────────────────────── */
 .form-group--inline {
   flex-direction: row;
   align-items: center;
-  gap: 0.5rem;
+  gap: 0.6rem;
+  background: #fdf8f5;
+  border: 1.5px solid #f0e8e4;
+  border-radius: 8px;
+  padding: 0.65rem 0.9rem;
 }
 
 .form-group--inline input[type="checkbox"] {
-  width: 1rem;
-  height: 1rem;
+  width: 16px;
+  height: 16px;
+  accent-color: #e45e26;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  flex-shrink: 0;
 }
 
-.modal-actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 0.75rem;
-  margin-top: 0.5rem;
+.form-group--inline label {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #554239;
+  text-transform: none;
+  letter-spacing: 0;
+  cursor: pointer;
 }
 
-.alert-success {
-  background: #e6f9f0;
-  color: #1a8a4a;
-  border: 1px solid #b7f0d4;
-  padding: 0.75rem 1rem;
-  border-radius: 6px;
-  margin-bottom: 1rem;
-  font-size: 0.875rem;
-}
-
-.alert-error {
-  background: #fde8e8;
-  color: #c81e1e;
-  border: 1px solid #fbd5d5;
-  padding: 0.75rem 1rem;
-  border-radius: 6px;
-  margin-bottom: 1rem;
-  font-size: 0.875rem;
-}
-
-.loading {
-  text-align: center;
-  padding: 3rem;
-  color: #888;
-  font-size: 0.95rem;
-}
-
+/* ── Filiais checkboxes ──────────────────────────────────── */
 .filiais-checkboxes {
   display: flex;
   flex-wrap: wrap;
   gap: 0.5rem;
-  padding: 0.5rem 0;
+  padding: 0.15rem 0;
 }
 
 .filial-checkbox-item {
@@ -278,7 +314,7 @@
   font-weight: 500;
   color: #4a3530;
   cursor: pointer;
-  background: #f9f7f5;
+  background: #fdf8f5;
   border: 1.5px solid #e0cfc9;
   border-radius: 6px;
   padding: 0.3rem 0.7rem;
@@ -296,4 +332,15 @@
   accent-color: #e45e26;
   border: none;
   padding: 0;
+  flex-shrink: 0;
+}
+
+/* ── Modal actions ───────────────────────────────────────── */
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.75rem;
+  margin-top: 0.25rem;
+  padding-top: 1rem;
+  border-top: 1px solid #f5ede6;
 }

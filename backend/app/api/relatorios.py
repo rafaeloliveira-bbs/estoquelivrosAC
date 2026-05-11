@@ -9,6 +9,7 @@ from app.services.relatorios import (
     relatorio_alertas_minimo,
     relatorio_lotes_vencimento,
     relatorio_evolucao_estoque,
+    relatorio_dashboard_por_filial,
 )
 from app.auth.permissions import get_current_user
 from app.config import logger
@@ -104,6 +105,17 @@ async def evolucao_estoque(
     dados = relatorio_evolucao_estoque(db, effective_filial_id)
     logger.info(f"Evolução de estoque gerada: filial={effective_filial_id}, {len(dados['itens'])} itens")
     return dados
+
+
+@router.get("/dashboard-filiais")
+async def dashboard_filiais(
+    db: Session = Depends(get_db),
+    user = Depends(get_current_user)
+):
+    """Dashboard analytics per filial — valor, títulos, sem estoque, top por valor"""
+    dados = relatorio_dashboard_por_filial(db, user["filial_ids"])
+    logger.info(f"Dashboard por filial gerado: {len(dados)} filiais")
+    return {"filiais": dados, "data_geracao": date.today().isoformat()}
 
 
 @router.get("/lotes-vencimento")

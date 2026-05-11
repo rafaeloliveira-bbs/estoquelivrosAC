@@ -5,6 +5,7 @@ from app.models.movimentacao import Movimentacao
 from app.models.livro import Livro
 from app.models.lote import Lote
 from app.models.alerta_minimo import AlertaMinimo
+from app.models.filial import Filial
 from datetime import datetime, date
 from dateutil.relativedelta import relativedelta
 import logging
@@ -343,3 +344,90 @@ def relatorio_evolucao_estoque(db: Session, filial_id) -> dict:
         "meses": [f"{m.year}-{m.month:02d}" for m in months],
         "itens": itens,
     }
+
+
+def relatorio_dashboard_por_filial(db: Session, filial_ids) -> list:
+    if isinstance(filial_ids, int):
+        filial_ids = [filial_ids]
+
+    result = []
+
+    for fid in filial_ids:
+        filial = db.query(Filial).filter(Filial.id == fid).first()
+        if not filial:
+            continue
+
+        estoque_sub = (
+            db.query(
+                Lote.livro_id,
+                func.coalesce(func.sum(Lote.quantidade_disponivel), 0).label("qtd_total"),
+                func.coalesce(
+                    func.sum(Lote.quantidade_disponivel * Lote.preco_custo_unitario), 0
+                ).label("valor_total"),
+            )
+            .filter(Lote.filial_id == fid)
+            .group_by(Lote.livro_id)
+            .subquery()
+        )
+
+        rows = (
+            db.query(
+                Livro.id,
+                Livro.titulo,
+                Livro.isbn,
+                Livro.estoque_minimo,
+                func.coalesce(estoque_sub.c.qtd_total, 0).label("qtd_total"),
+                func.coalesce(estoque_sub.c.valor_total, 0).label("valor_total"),
+            )
+            .outerjoin(estoque_sub, estoque_sub.c.livro_id == Livro.id)
+            .filter(Livro.filial_id == fid, Livro.status == "ativo")
+            .all()
+        )
+
+        livros_data = []
+        valor_total_filial = 0.0
+        total_unidades = 0
+
+        for row in rows:
+            qtd = int(row.qtd_total)
+            valor = float(row.valor_total)
+            valor_total_filial += valor
+            total_unidades += qtd
+            livros_data.append({
+                "livro_id": row.id,
+                "titulo": row.titulo,
+                "isbn": row.isbn,
+                "quantidade_total": qtd,
+                "valor_total": valor,
+                "estoque_minimo": row.estoque_minimo,
+            })
+
+        top_por_valor = sorted(
+            [l for l in livros_data if l["valor_total"] > 0],
+            key=lambda x: x["valor_total"],
+            reverse=True,
+        )[:10]
+
+        sem_estoque_full = [l for l in livros_data if l["quantidade_total"] == 0]
+        sem_estoque = [
+            {
+                "livro_id": l["livro_id"],
+                "titulo": l["titulo"],
+                "isbn": l["isbn"],
+                "estoque_minimo": l["estoque_minimo"],
+            }
+            for l in sem_estoque_full
+        ]
+
+        result.append({
+            "filial_id": fid,
+            "filial_nome": filial.nome,
+            "valor_total_estoque": round(valor_total_filial, 2),
+            "total_titulos_ativos": len(livros_data),
+            "total_unidades": total_unidades,
+            "titulos_sem_estoque": len(sem_estoque),
+            "top_por_valor": top_por_valor,
+            "sem_estoque": sem_estoque[:20],
+        })
+
+    return result

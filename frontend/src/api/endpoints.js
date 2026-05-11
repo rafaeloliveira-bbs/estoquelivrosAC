@@ -69,6 +69,7 @@ export const movimentacoesAPI = {
 };
 
 export const relatoriosAPI = {
+  dashboardFiliais: () => apiClient.get('/relatorios/dashboard-filiais'),
   estoqueAtual: () => apiClient.get('/relatorios/estoque-atual'),
   alertasMinimo: () => apiClient.get('/relatorios/alertas-minimo'),
   movimentacoes: (data_inicio, data_fim, tipo, filial_id) =>

@@ -203,9 +203,8 @@ export default function Usuarios() {
               <button className="btn-close" onClick={fecharModal}>✕</button>
             </div>
 
-            {erro && <div className="alert-error">{erro}</div>}
-
             <form onSubmit={handleSalvar} className="modal-form">
+              {erro && <div className="alert-error">{erro}</div>}
               <div className="form-row">
                 <div className="form-group">
                   <label>Nome *</label>
@@ -219,7 +218,7 @@ export default function Usuarios() {
 
               <div className="form-row">
                 <div className="form-group">
-                  <label>{modal === 'criar' ? 'Senha *' : 'Nova senha (deixe em branco para manter)'}</label>
+                  <label>{modal === 'criar' ? 'Senha *' : 'Nova senha'}</label>
                   <input
                     name="senha"
                     type="password"
@@ -227,6 +226,7 @@ export default function Usuarios() {
                     onChange={handleChange}
                     required={modal === 'criar'}
                     autoComplete="new-password"
+                    placeholder={modal === 'editar' ? 'Deixe em branco para manter' : ''}
                   />
                 </div>
                 <div className="form-group">

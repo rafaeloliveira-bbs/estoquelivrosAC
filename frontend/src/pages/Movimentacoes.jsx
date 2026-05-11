@@ -103,6 +103,12 @@ export default function Movimentacoes() {
   const [resultadoImportNf, setResultadoImportNf] = useState(null);
   const [erroImportNf, setErroImportNf] = useState('');
 
+  // ── Cadastro rápido de livro via NF ──────────────────────────────────────────
+  const [cadastroRapidoIdx, setCadastroRapidoIdx] = useState(null);
+  const [formCadastroRapido, setFormCadastroRapido] = useState({});
+  const [salvandoCadastroRapido, setSalvandoCadastroRapido] = useState(false);
+  const [erroCadastroRapido, setErroCadastroRapido] = useState('');
+
   useEffect(() => {
     const fechar = (e) => {
       if (csvMenuRef.current && !csvMenuRef.current.contains(e.target)) {
@@ -436,6 +442,67 @@ export default function Movimentacoes() {
     setErroImportNf('');
   };
 
+  // ── Cadastro rápido ──────────────────────────────────────────────────────────
+  const abrirCadastroRapido = (idx) => {
+    const item = itensNf[idx];
+    setCadastroRapidoIdx(idx);
+    setFormCadastroRapido({
+      titulo: item.titulo_nf || '',
+      preco_custo: item.valor_unitario != null ? String(item.valor_unitario) : '',
+      codigo_item: '',
+      isbn: '',
+      autor: '',
+      editora: '',
+      fornecedor: '',
+      grade: '',
+      classificacao: '',
+      tipo_material: '',
+    });
+    setErroCadastroRapido('');
+  };
+
+  const fecharCadastroRapido = () => {
+    setCadastroRapidoIdx(null);
+    setFormCadastroRapido({});
+    setErroCadastroRapido('');
+  };
+
+  const handleChangeCadastroRapido = (e) => {
+    const { name, value } = e.target;
+    setFormCadastroRapido((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const handleSalvarCadastroRapido = async (e) => {
+    e.preventDefault();
+    setSalvandoCadastroRapido(true);
+    setErroCadastroRapido('');
+    try {
+      const payload = {
+        titulo: formCadastroRapido.titulo,
+        filial_id: parseInt(filialNfId),
+        preco_custo: parseFloat(formCadastroRapido.preco_custo) || 0,
+      };
+      if (formCadastroRapido.codigo_item) payload.codigo_item = parseInt(formCadastroRapido.codigo_item);
+      if (formCadastroRapido.isbn)          payload.isbn = formCadastroRapido.isbn;
+      if (formCadastroRapido.autor)         payload.autor = formCadastroRapido.autor;
+      if (formCadastroRapido.editora)       payload.editora = formCadastroRapido.editora;
+      if (formCadastroRapido.fornecedor)    payload.fornecedor = formCadastroRapido.fornecedor;
+      if (formCadastroRapido.grade)         payload.grade = formCadastroRapido.grade;
+      if (formCadastroRapido.classificacao) payload.classificacao = formCadastroRapido.classificacao;
+      if (formCadastroRapido.tipo_material) payload.tipo_material = formCadastroRapido.tipo_material;
+
+      const res = await livrosAPI.criar(payload);
+      const novoLivro = res.data;
+      setLivrosFilial((prev) => [...prev, novoLivro]);
+      handleSelectLivroNf(cadastroRapidoIdx, novoLivro);
+      fecharCadastroRapido();
+    } catch (err) {
+      setErroCadastroRapido(err.response?.data?.detail || 'Erro ao cadastrar item');
+    } finally {
+      setSalvandoCadastroRapido(false);
+    }
+  };
+
   return (
     <div className="movimentacoes">
       <h1>Movimentações</h1>
@@ -680,35 +747,64 @@ export default function Movimentacoes() {
                           <td>{item.titulo_nf}</td>
                           <td style={!item.match_encontrado ? { position: 'relative', zIndex: 1 } : undefined}>
                             {item.match_encontrado ? (
-                              <span className="nf-match-ok">
-                                {item.codigo_item} — {item.titulo_cadastro}
-                              </span>
+                              <div className="nf-match-ok-wrap">
+                                <span className="nf-match-ok">
+                                  {item.codigo_item ? `${item.codigo_item} — ` : ''}{item.titulo_cadastro}
+                                </span>
+                                <button
+                                  type="button"
+                                  className="nf-match-desvincular"
+                                  title="Desvincular"
+                                  onClick={() =>
+                                    setItensNf((prev) =>
+                                      prev.map((it, idx) =>
+                                        idx === i
+                                          ? { ...it, match_encontrado: false, livro_id: null, titulo_cadastro: undefined }
+                                          : it
+                                      )
+                                    )
+                                  }
+                                >✕</button>
+                              </div>
                             ) : (
                               <div className="nf-busca-livro">
                                 <input
                                   type="text"
                                   className="nf-busca-input"
-                                  placeholder="Pesquisar item..."
+                                  placeholder="Pesquisar item existente..."
                                   value={termo}
                                   onChange={(e) =>
                                     setBuscasNf((prev) => ({ ...prev, [i]: e.target.value }))
                                   }
                                 />
-                                {termo.length >= 2 && (
+                                {termo.length >= 2 ? (
                                   <ul className="nf-busca-resultados">
-                                    {filtrados.length === 0 ? (
+                                    {filtrados.map((l) => (
+                                      <li key={l.id} onClick={() => handleSelectLivroNf(i, l)}>
+                                        <strong>{l.codigo_item}</strong> — {l.titulo}
+                                      </li>
+                                    ))}
+                                    {filtrados.length === 0 && (
                                       <li className="nf-busca-vazio">Nenhum item encontrado</li>
-                                    ) : (
-                                      filtrados.map((l) => (
-                                        <li
-                                          key={l.id}
-                                          onClick={() => handleSelectLivroNf(i, l)}
-                                        >
-                                          <strong>{l.codigo_item}</strong> — {l.titulo}
-                                        </li>
-                                      ))
                                     )}
+                                    <li
+                                      className="nf-busca-cadastrar"
+                                      onClick={() => {
+                                        abrirCadastroRapido(i);
+                                        setBuscasNf((p) => ({ ...p, [i]: '' }));
+                                      }}
+                                    >
+                                      + Cadastrar novo item
+                                    </li>
                                   </ul>
+                                ) : (
+                                  <button
+                                    type="button"
+                                    className="nf-btn-novo"
+                                    onClick={() => abrirCadastroRapido(i)}
+                                  >
+                                    + Novo item
+                                  </button>
                                 )}
                               </div>
                             )}
@@ -1072,6 +1168,137 @@ export default function Movimentacoes() {
               </table>
             </div>
           )}
+        </div>
+      )}
+
+      {/* ── Modal: cadastro rápido de item via NF ────────────────────────── */}
+      {cadastroRapidoIdx !== null && itensNf[cadastroRapidoIdx] && (
+        <div className="nf-modal-overlay" onClick={fecharCadastroRapido}>
+          <div className="nf-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="nf-modal-header">
+              <h2>Cadastrar novo item</h2>
+              <button className="btn-close" onClick={fecharCadastroRapido}>✕</button>
+            </div>
+
+            <div className="nf-cadastro-origem">
+              <span className="nf-cadastro-origem-label">Título na NF</span>
+              <span className="nf-cadastro-origem-valor">{itensNf[cadastroRapidoIdx].titulo_nf}</span>
+            </div>
+
+            <form onSubmit={handleSalvarCadastroRapido} className="nf-cadastro-form">
+              {erroCadastroRapido && <div className="alert-error">{erroCadastroRapido}</div>}
+
+              <div className="nf-form-row">
+                <div className="form-group">
+                  <label>Título *</label>
+                  <input
+                    name="titulo"
+                    value={formCadastroRapido.titulo || ''}
+                    onChange={handleChangeCadastroRapido}
+                    required
+                  />
+                </div>
+                <div className="form-group">
+                  <label>Código do item</label>
+                  <input
+                    name="codigo_item"
+                    type="number"
+                    value={formCadastroRapido.codigo_item || ''}
+                    onChange={handleChangeCadastroRapido}
+                    placeholder="ex: 1023"
+                  />
+                </div>
+              </div>
+
+              <div className="nf-form-row">
+                <div className="form-group">
+                  <label>Autor</label>
+                  <input
+                    name="autor"
+                    value={formCadastroRapido.autor || ''}
+                    onChange={handleChangeCadastroRapido}
+                  />
+                </div>
+                <div className="form-group">
+                  <label>Editora</label>
+                  <input
+                    name="editora"
+                    value={formCadastroRapido.editora || ''}
+                    onChange={handleChangeCadastroRapido}
+                  />
+                </div>
+              </div>
+
+              <div className="nf-form-row">
+                <div className="form-group">
+                  <label>Fornecedor</label>
+                  <input
+                    name="fornecedor"
+                    value={formCadastroRapido.fornecedor || ''}
+                    onChange={handleChangeCadastroRapido}
+                  />
+                </div>
+                <div className="form-group">
+                  <label>Grade</label>
+                  <input
+                    name="grade"
+                    value={formCadastroRapido.grade || ''}
+                    onChange={handleChangeCadastroRapido}
+                    placeholder="ex: 1º ano"
+                  />
+                </div>
+              </div>
+
+              <div className="nf-form-row">
+                <div className="form-group">
+                  <label>ISBN</label>
+                  <input
+                    name="isbn"
+                    value={formCadastroRapido.isbn || ''}
+                    onChange={handleChangeCadastroRapido}
+                    placeholder="978-..."
+                  />
+                </div>
+                <div className="form-group">
+                  <label>Preço de custo</label>
+                  <input
+                    name="preco_custo"
+                    value={formCadastroRapido.preco_custo || ''}
+                    onChange={handleChangeCadastroRapido}
+                    placeholder="0.00"
+                  />
+                </div>
+              </div>
+
+              <div className="nf-form-row">
+                <div className="form-group">
+                  <label>Classificação</label>
+                  <input
+                    name="classificacao"
+                    value={formCadastroRapido.classificacao || ''}
+                    onChange={handleChangeCadastroRapido}
+                  />
+                </div>
+                <div className="form-group">
+                  <label>Tipo de material</label>
+                  <input
+                    name="tipo_material"
+                    value={formCadastroRapido.tipo_material || ''}
+                    onChange={handleChangeCadastroRapido}
+                  />
+                </div>
+              </div>
+
+              <div className="nf-modal-actions">
+                <button type="button" className="btn-secondary" onClick={fecharCadastroRapido}>
+                  Cancelar
+                </button>
+                <button type="submit" className="btn-primary" disabled={salvandoCadastroRapido}>
+                  {salvandoCadastroRapido ? 'Cadastrando...' : 'Cadastrar e Vincular'}
+                </button>
+              </div>
+            </form>
+          </div>
         </div>
       )}
     </div>

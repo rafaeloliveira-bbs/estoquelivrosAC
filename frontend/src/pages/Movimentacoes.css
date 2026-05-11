@@ -421,7 +421,12 @@
 .mapping-item.mapped   { background: #d4edda; border: 1px solid #c3e6cb; color: #155724; }
 .mapping-item.unmapped { background: #f8d7da; border: 1px solid #f5c6cb; color: #721c24; }
 
-.preview-table { margin-bottom: 1.5rem; overflow-x: auto; }
+.preview-table {
+  margin-bottom: 1.5rem;
+  overflow-x: auto;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08);
+}
 .preview-table h3 { color: #554239; margin-bottom: 0.75rem; }
 
 .preview-table table {
@@ -429,8 +434,6 @@
   border-collapse: collapse;
   background: white;
   border-radius: 8px;
-  overflow: hidden;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08);
 }
 
 .preview-table th,
@@ -714,15 +717,189 @@
   font-size: 0.88rem;
 }
 
+/* item vinculado: texto + botão desvincular */
+.nf-match-ok-wrap {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.nf-match-desvincular {
+  background: none;
+  border: none;
+  color: #b08880;
+  font-size: 0.75rem;
+  cursor: pointer;
+  padding: 0 0.2rem;
+  line-height: 1;
+  flex-shrink: 0;
+  transition: color 0.15s;
+}
+.nf-match-desvincular:hover { color: #c0392b; }
+
+/* opção "Cadastrar novo item" no dropdown */
+.nf-busca-resultados li.nf-busca-cadastrar {
+  color: #e45e26;
+  font-weight: 700;
+  border-top: 1px solid #f5ede6;
+  cursor: pointer;
+}
+.nf-busca-resultados li.nf-busca-cadastrar:hover { background: #fff3e0; }
+
+/* botão "+ Novo item" visível quando não há busca */
+.nf-btn-novo {
+  margin-top: 0.35rem;
+  background: none;
+  border: 1.5px dashed #e0cfc9;
+  border-radius: 6px;
+  color: #e45e26;
+  font-size: 0.82rem;
+  font-weight: 700;
+  padding: 0.3rem 0.6rem;
+  cursor: pointer;
+  width: 100%;
+  text-align: left;
+  transition: border-color 0.15s, background 0.15s;
+}
+.nf-btn-novo:hover {
+  border-color: #e45e26;
+  background: #fff3e0;
+}
+
 /* Permite que o dropdown de busca escape do clip da tabela NF */
 .preview-table--nf {
   overflow: visible;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08);
-  border-radius: 8px;
 }
 
 .preview-table--nf table {
-  overflow: visible;
-  box-shadow: none;
   border-radius: 0;
+}
+
+/* ── Modal de cadastro rápido de item via NF ─────────────────────────────── */
+.nf-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(85, 66, 57, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 500;
+}
+
+.nf-modal {
+  background: white;
+  border-radius: 12px;
+  width: 560px;
+  max-width: 95vw;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: 0 12px 40px rgba(85, 66, 57, 0.25);
+}
+
+.nf-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1.25rem 1.5rem;
+  border-bottom: 2px solid #f5ede6;
+}
+
+.nf-modal-header h2 {
+  margin: 0;
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: #554239;
+}
+
+/* banner com o título original da NF */
+.nf-cadastro-origem {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  padding: 0.75rem 1.5rem;
+  background: #fdf8f5;
+  border-bottom: 1px solid #f0e8e4;
+}
+
+.nf-cadastro-origem-label {
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #a08880;
+}
+
+.nf-cadastro-origem-valor {
+  font-size: 0.92rem;
+  font-weight: 600;
+  color: #554239;
+}
+
+/* form dentro do modal */
+.nf-cadastro-form {
+  padding: 1.25rem 1.5rem 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.nf-form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+
+.nf-cadastro-form .form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.nf-cadastro-form .form-group label {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: #554239;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.nf-cadastro-form .form-group input {
+  padding: 0.6rem 0.75rem;
+  border: 1.5px solid #e0cfc9;
+  border-radius: 6px;
+  font-size: 0.9rem;
+  background: white;
+  outline: none;
+  font-family: inherit;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.nf-cadastro-form .form-group input:focus {
+  border-color: #f68c3d;
+  box-shadow: 0 0 0 3px rgba(246, 140, 61, 0.12);
+}
+
+.nf-cadastro-form .form-group input::placeholder {
+  color: #c9b8b0;
+  font-style: italic;
+  font-size: 0.83rem;
+}
+
+.nf-modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.75rem;
+  padding-top: 1rem;
+  border-top: 1px solid #f5ede6;
+}
+
+/* alert-error reutilizado dentro do nf-cadastro-form */
+.nf-cadastro-form .alert-error {
+  background: #fdecea;
+  color: #c0392b;
+  padding: 0.75rem 1rem;
+  border-radius: 6px;
+  border-left: 3px solid #ef464b;
+  font-size: 0.875rem;
+  margin-bottom: 0;
 }
