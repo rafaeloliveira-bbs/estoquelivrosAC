@@ -374,7 +374,7 @@ export default function Movimentacoes() {
     formData.append('file', file);
     const [previewResult, livrosResult] = await Promise.allSettled([
       movimentacoesAPI.previewNfPdf(formData, filialNfId),
-      livrosAPI.listarComEstoque(null, filialNfId, 0, 2000),
+      livrosAPI.listar(0, 2000),
     ]);
     setImportandoNf(false);
     if (previewResult.status === 'rejected') {
@@ -745,7 +745,7 @@ export default function Movimentacoes() {
                       return (
                         <tr key={i}>
                           <td>{item.titulo_nf}</td>
-                          <td style={!item.match_encontrado ? { position: 'relative' } : undefined}>
+                          <td>
                             {item.match_encontrado ? (
                               <div className="nf-match-ok-wrap">
                                 <span className="nf-match-ok">
