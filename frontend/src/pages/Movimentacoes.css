@@ -717,8 +717,12 @@
 /* Permite que o dropdown de busca escape do clip da tabela NF */
 .preview-table--nf {
   overflow: visible;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08);
+  border-radius: 8px;
 }
 
 .preview-table--nf table {
   overflow: visible;
+  box-shadow: none;
+  border-radius: 0;
 }
