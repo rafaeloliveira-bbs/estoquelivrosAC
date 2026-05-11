@@ -662,7 +662,6 @@
 /* ── Busca de item na tabela NF ── */
 .nf-busca-livro {
   position: relative;
-  min-width: 220px;
 }
 
 .nf-busca-input {
@@ -766,13 +765,22 @@
   background: #fff3e0;
 }
 
-/* Permite que o dropdown de busca escape do clip da tabela NF */
 .preview-table--nf {
   overflow: visible;
+  border-radius: 0;
+  box-shadow: none;
 }
 
 .preview-table--nf table {
+  overflow: visible;
   border-radius: 0;
+  box-shadow: none;
+}
+
+/* Garante largura mínima na coluna "Item no cadastro" */
+.preview-table--nf th:nth-child(2),
+.preview-table--nf td:nth-child(2) {
+  min-width: 210px;
 }
 
 /* ── Modal de cadastro rápido de item via NF ─────────────────────────────── */

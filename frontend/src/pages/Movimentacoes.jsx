@@ -745,7 +745,7 @@ export default function Movimentacoes() {
                       return (
                         <tr key={i}>
                           <td>{item.titulo_nf}</td>
-                          <td style={!item.match_encontrado ? { position: 'relative', zIndex: 1 } : undefined}>
+                          <td style={!item.match_encontrado ? { position: 'relative' } : undefined}>
                             {item.match_encontrado ? (
                               <div className="nf-match-ok-wrap">
                                 <span className="nf-match-ok">
