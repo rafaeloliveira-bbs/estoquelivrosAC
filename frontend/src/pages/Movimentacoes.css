@@ -423,9 +423,12 @@
 
 .preview-table {
   margin-bottom: 1.5rem;
-  overflow-x: auto;
   border-radius: 8px;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08);
+}
+
+.preview-table:not(.preview-table--nf) {
+  overflow-x: auto;
 }
 .preview-table h3 { color: #554239; margin-bottom: 0.75rem; }
 
@@ -662,6 +665,7 @@
 /* ── Busca de item na tabela NF ── */
 .nf-busca-livro {
   position: relative;
+  white-space: normal; /* reset do nowrap herdado do td */
 }
 
 .nf-busca-input {
@@ -747,6 +751,7 @@
 
 /* botão "+ Novo item" visível quando não há busca */
 .nf-btn-novo {
+  display: block; /* garante quebra de linha abaixo do input, independente de white-space */
   margin-top: 0.35rem;
   background: none;
   border: 1.5px dashed #e0cfc9;
@@ -781,6 +786,20 @@
 .preview-table--nf th:nth-child(2),
 .preview-table--nf td:nth-child(2) {
   min-width: 210px;
+}
+
+/* Alinha todas as células ao topo: impede o botão "+ Novo item" de aparecer
+   na mesma altura dos valores de Qnt / Valor Unit das células adjacentes */
+.preview-table--nf th,
+.preview-table--nf td {
+  vertical-align: top;
+}
+
+/* Garante que a linha com input ativo apareça acima das linhas seguintes,
+   evitando que o dropdown de busca fique coberto por rows subsequentes */
+.preview-table--nf tbody tr:focus-within {
+  position: relative;
+  z-index: 2;
 }
 
 /* ── Modal de cadastro rápido de item via NF ─────────────────────────────── */
