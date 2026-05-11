@@ -98,7 +98,8 @@ export default function Movimentacoes() {
   const [previewNf, setPreviewNf] = useState(null);
   const [itensNf, setItensNf] = useState([]);
   const [livrosFilial, setLivrosFilial] = useState([]);
-  const [buscasNf, setBuscasNf] = useState({});
+  const [vinculandoIdx, setVinculandoIdx] = useState(null);
+  const [buscaVinculacao, setBuscaVinculacao] = useState('');
   const [importandoNf, setImportandoNf] = useState(false);
   const [resultadoImportNf, setResultadoImportNf] = useState(null);
   const [erroImportNf, setErroImportNf] = useState('');
@@ -374,7 +375,7 @@ export default function Movimentacoes() {
     formData.append('file', file);
     const [previewResult, livrosResult] = await Promise.allSettled([
       movimentacoesAPI.previewNfPdf(formData, filialNfId),
-      livrosAPI.listar(0, 2000),
+      livrosAPI.listarComEstoque(null, parseInt(filialNfId), 0, 2000),
     ]);
     setImportandoNf(false);
     if (previewResult.status === 'rejected') {
@@ -421,7 +422,8 @@ export default function Movimentacoes() {
       setPreviewNf(null);
       setItensNf([]);
       setLivrosFilial([]);
-      setBuscasNf({});
+      setVinculandoIdx(null);
+      setBuscaVinculacao('');
       setFilialNfId('');
       setTipoNf('compra');
       setDataInicio('');
@@ -438,7 +440,8 @@ export default function Movimentacoes() {
     setPreviewNf(null);
     setItensNf([]);
     setLivrosFilial([]);
-    setBuscasNf({});
+    setVinculandoIdx(null);
+    setBuscaVinculacao('');
     setErroImportNf('');
   };
 
@@ -465,6 +468,16 @@ export default function Movimentacoes() {
     setCadastroRapidoIdx(null);
     setFormCadastroRapido({});
     setErroCadastroRapido('');
+  };
+
+  const abrirVinculacao = (idx) => {
+    setVinculandoIdx(idx);
+    setBuscaVinculacao('');
+  };
+
+  const fecharVinculacao = () => {
+    setVinculandoIdx(null);
+    setBuscaVinculacao('');
   };
 
   const handleChangeCadastroRapido = (e) => {
@@ -734,87 +747,45 @@ export default function Movimentacoes() {
                     </tr>
                   </thead>
                   <tbody>
-                    {itensNf.map((item, i) => {
-                      const termo = buscasNf[i] || '';
-                      const filtrados = termo.length >= 2
-                        ? livrosFilial.filter((l) =>
-                            (l.titulo ?? '').toLowerCase().includes(termo.toLowerCase()) ||
-                            String(l.codigo_item ?? '').includes(termo)
-                          ).slice(0, 10)
-                        : [];
-                      return (
-                        <tr key={i}>
-                          <td>{item.titulo_nf}</td>
-                          <td>
-                            {item.match_encontrado ? (
-                              <div className="nf-match-ok-wrap">
-                                <span className="nf-match-ok">
-                                  {item.codigo_item ? `${item.codigo_item} — ` : ''}{item.titulo_cadastro}
-                                </span>
-                                <button
-                                  type="button"
-                                  className="nf-match-desvincular"
-                                  title="Desvincular"
-                                  onClick={() =>
-                                    setItensNf((prev) =>
-                                      prev.map((it, idx) =>
-                                        idx === i
-                                          ? { ...it, match_encontrado: false, livro_id: null, titulo_cadastro: undefined }
-                                          : it
-                                      )
+                    {itensNf.map((item, i) => (
+                      <tr key={i}>
+                        <td>{item.titulo_nf}</td>
+                        <td>
+                          {item.match_encontrado ? (
+                            <div className="nf-match-ok-wrap">
+                              <span className="nf-match-ok">
+                                {item.codigo_item ? `${item.codigo_item} — ` : ''}{item.titulo_cadastro}
+                              </span>
+                              <button
+                                type="button"
+                                className="nf-match-desvincular"
+                                title="Desvincular"
+                                onClick={() =>
+                                  setItensNf((prev) =>
+                                    prev.map((it, idx) =>
+                                      idx === i
+                                        ? { ...it, match_encontrado: false, livro_id: null, titulo_cadastro: undefined }
+                                        : it
                                     )
-                                  }
-                                >✕</button>
-                              </div>
-                            ) : (
-                              <div className="nf-busca-livro">
-                                <input
-                                  type="text"
-                                  className="nf-busca-input"
-                                  placeholder="Pesquisar item existente..."
-                                  value={termo}
-                                  onChange={(e) =>
-                                    setBuscasNf((prev) => ({ ...prev, [i]: e.target.value }))
-                                  }
-                                />
-                                {termo.length >= 2 ? (
-                                  <ul className="nf-busca-resultados">
-                                    {filtrados.map((l) => (
-                                      <li key={l.id} onClick={() => handleSelectLivroNf(i, l)}>
-                                        <strong>{l.codigo_item}</strong> — {l.titulo}
-                                      </li>
-                                    ))}
-                                    {filtrados.length === 0 && (
-                                      <li className="nf-busca-vazio">Nenhum item encontrado</li>
-                                    )}
-                                    <li
-                                      className="nf-busca-cadastrar"
-                                      onClick={() => {
-                                        abrirCadastroRapido(i);
-                                        setBuscasNf((p) => ({ ...p, [i]: '' }));
-                                      }}
-                                    >
-                                      + Cadastrar novo item
-                                    </li>
-                                  </ul>
-                                ) : (
-                                  <button
-                                    type="button"
-                                    className="nf-btn-novo"
-                                    onClick={() => abrirCadastroRapido(i)}
-                                  >
-                                    + Novo item
-                                  </button>
-                                )}
-                              </div>
-                            )}
-                          </td>
-                          <td>{item.quantidade}</td>
-                          <td>R$ {formatMoedaBR(item.valor_unitario)}</td>
-                          <td>R$ {formatMoedaBR(item.valor_total)}</td>
-                        </tr>
-                      );
-                    })}
+                                  )
+                                }
+                              >✕</button>
+                            </div>
+                          ) : (
+                            <button
+                              type="button"
+                              className="nf-btn-vincular"
+                              onClick={() => abrirVinculacao(i)}
+                            >
+                              Vincular item
+                            </button>
+                          )}
+                        </td>
+                        <td>{item.quantidade}</td>
+                        <td>R$ {formatMoedaBR(item.valor_unitario)}</td>
+                        <td>R$ {formatMoedaBR(item.valor_total)}</td>
+                      </tr>
+                    ))}
                   </tbody>
                 </table>
               </div>
@@ -1168,6 +1139,74 @@ export default function Movimentacoes() {
               </table>
             </div>
           )}
+        </div>
+      )}
+
+      {/* ── Modal: vinculação de item NF ao cadastro ─────────────────────── */}
+      {vinculandoIdx !== null && itensNf[vinculandoIdx] && (
+        <div className="nf-modal-overlay" onClick={fecharVinculacao}>
+          <div className="nf-vincular-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="nf-vincular-header">
+              <div className="nf-vincular-header-text">
+                <h2>Vincular ao cadastro</h2>
+                <p className="nf-vincular-origem-titulo">{itensNf[vinculandoIdx].titulo_nf}</p>
+              </div>
+              <button className="btn-close" onClick={fecharVinculacao}>✕</button>
+            </div>
+
+            <div className="nf-vincular-busca-wrap">
+              <input
+                type="text"
+                autoFocus
+                className="nf-vincular-input"
+                placeholder="Pesquisar por título ou código..."
+                value={buscaVinculacao}
+                onChange={(e) => setBuscaVinculacao(e.target.value)}
+              />
+            </div>
+
+            <ul className="nf-vincular-lista">
+              {(() => {
+                const t = buscaVinculacao.toLowerCase();
+                const lista = buscaVinculacao.length === 0
+                  ? livrosFilial.slice(0, 40)
+                  : livrosFilial
+                      .filter((l) =>
+                        (l.titulo ?? '').toLowerCase().includes(t) ||
+                        String(l.codigo_item ?? '').includes(buscaVinculacao)
+                      )
+                      .slice(0, 40);
+                if (lista.length === 0) {
+                  return <li className="nf-vincular-vazio">Nenhum item encontrado</li>;
+                }
+                return lista.map((l) => (
+                  <li
+                    key={l.id}
+                    onClick={() => {
+                      handleSelectLivroNf(vinculandoIdx, l);
+                      fecharVinculacao();
+                    }}
+                  >
+                    {l.codigo_item && <strong>{l.codigo_item} —&nbsp;</strong>}
+                    <span>{l.titulo}</span>
+                  </li>
+                ));
+              })()}
+            </ul>
+
+            <div className="nf-vincular-footer">
+              <button
+                type="button"
+                className="nf-btn-novo-item"
+                onClick={() => {
+                  fecharVinculacao();
+                  abrirCadastroRapido(vinculandoIdx);
+                }}
+              >
+                + Cadastrar novo item
+              </button>
+            </div>
+          </div>
         </div>
       )}
 

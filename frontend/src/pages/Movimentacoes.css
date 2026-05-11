@@ -662,58 +662,141 @@
   max-width: 280px;
 }
 
-/* ── Busca de item na tabela NF ── */
-.nf-busca-livro {
-  position: relative;
-  white-space: normal; /* reset do nowrap herdado do td */
-}
-
-.nf-busca-input {
-  width: 100%;
-  padding: 0.4rem 0.6rem;
+/* ── Botão Vincular item (célula da tabela NF) ── */
+.nf-btn-vincular {
+  background: none;
   border: 1.5px solid #e0cfc9;
   border-radius: 6px;
-  font-size: 0.88rem;
+  color: #e45e26;
+  font-size: 0.82rem;
+  font-weight: 700;
+  padding: 0.3rem 0.75rem;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: border-color 0.15s, background 0.15s;
+}
+.nf-btn-vincular:hover {
+  border-color: #e45e26;
+  background: #fff3e0;
+}
+
+/* ── Modal de Vinculação ── */
+.nf-vincular-modal {
+  background: white;
+  border-radius: 12px;
+  width: 520px;
+  max-width: 95vw;
+  max-height: 85vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 12px 40px rgba(85, 66, 57, 0.25);
+  overflow: hidden;
+}
+
+.nf-vincular-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  padding: 1.25rem 1.5rem;
+  border-bottom: 2px solid #f5ede6;
+  flex-shrink: 0;
+}
+
+.nf-vincular-header-text h2 {
+  margin: 0 0 0.2rem;
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #554239;
+}
+
+.nf-vincular-origem-titulo {
+  margin: 0;
+  font-size: 0.83rem;
+  color: #a08880;
+  max-width: 400px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.nf-vincular-busca-wrap {
+  padding: 1rem 1.5rem 0.75rem;
+  flex-shrink: 0;
+}
+
+.nf-vincular-input {
+  width: 100%;
+  padding: 0.55rem 0.75rem;
+  border: 1.5px solid #e0cfc9;
+  border-radius: 8px;
+  font-size: 0.92rem;
   background: white;
   box-sizing: border-box;
 }
 
-.nf-busca-input:focus {
+.nf-vincular-input:focus {
   outline: none;
   border-color: #f68c3d;
   box-shadow: 0 0 0 3px rgba(246, 140, 61, 0.12);
 }
 
-.nf-busca-resultados {
-  position: absolute;
-  top: calc(100% + 2px);
-  left: 0;
-  right: 0;
-  background: white;
-  border: 1.5px solid #e0cfc9;
-  border-radius: 6px;
-  box-shadow: 0 4px 16px rgba(85, 66, 57, 0.14);
+.nf-vincular-lista {
   list-style: none;
-  margin: 0;
+  margin: 0 1.5rem;
   padding: 0;
-  z-index: 200;
-  max-height: 200px;
   overflow-y: auto;
+  flex: 1;
+  border: 1.5px solid #e0cfc9;
+  border-radius: 8px;
+  min-height: 80px;
 }
 
-.nf-busca-resultados li {
-  padding: 0.5rem 0.75rem;
-  font-size: 0.88rem;
-  color: #4a3530;
+.nf-vincular-lista li {
+  padding: 0.6rem 0.9rem;
   cursor: pointer;
   border-bottom: 1px solid #f5ede6;
+  font-size: 0.9rem;
+  color: #4a3530;
+  display: flex;
+  align-items: baseline;
   transition: background 0.13s;
 }
 
-.nf-busca-resultados li:last-child { border-bottom: none; }
-.nf-busca-resultados li:hover { background: #fdf3ea; }
-.nf-busca-resultados li.nf-busca-vazio { color: #999; cursor: default; font-style: italic; }
-.nf-busca-resultados li.nf-busca-vazio:hover { background: none; }
+.nf-vincular-lista li:last-child { border-bottom: none; }
+.nf-vincular-lista li:hover { background: #fdf3ea; }
+
+.nf-vincular-lista li strong {
+  color: #e45e26;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.nf-vincular-vazio {
+  color: #999 !important;
+  cursor: default !important;
+  font-style: italic;
+}
+.nf-vincular-vazio:hover { background: none !important; }
+
+.nf-vincular-footer {
+  padding: 1rem 1.5rem;
+  border-top: 1px solid #f5ede6;
+  flex-shrink: 0;
+}
+
+.nf-btn-novo-item {
+  background: none;
+  border: 1.5px dashed #e45e26;
+  border-radius: 6px;
+  color: #e45e26;
+  font-size: 0.88rem;
+  font-weight: 700;
+  padding: 0.5rem 1rem;
+  cursor: pointer;
+  width: 100%;
+  transition: background 0.15s;
+}
+.nf-btn-novo-item:hover { background: #fff3e0; }
 
 .nf-match-ok {
   color: #1e6b32;
@@ -740,35 +823,6 @@
 }
 .nf-match-desvincular:hover { color: #c0392b; }
 
-/* opção "Cadastrar novo item" no dropdown */
-.nf-busca-resultados li.nf-busca-cadastrar {
-  color: #e45e26;
-  font-weight: 700;
-  border-top: 1px solid #f5ede6;
-  cursor: pointer;
-}
-.nf-busca-resultados li.nf-busca-cadastrar:hover { background: #fff3e0; }
-
-/* botão "+ Novo item" visível quando não há busca */
-.nf-btn-novo {
-  display: block; /* garante quebra de linha abaixo do input, independente de white-space */
-  margin-top: 0.35rem;
-  background: none;
-  border: 1.5px dashed #e0cfc9;
-  border-radius: 6px;
-  color: #e45e26;
-  font-size: 0.82rem;
-  font-weight: 700;
-  padding: 0.3rem 0.6rem;
-  cursor: pointer;
-  width: 100%;
-  text-align: left;
-  transition: border-color 0.15s, background 0.15s;
-}
-.nf-btn-novo:hover {
-  border-color: #e45e26;
-  background: #fff3e0;
-}
 
 .preview-table--nf {
   overflow: visible;
@@ -787,19 +841,6 @@
   min-width: 210px;
 }
 
-/* Alinha todas as células ao topo: impede o botão "+ Novo item" de aparecer
-   na mesma altura dos valores de Qnt / Valor Unit das células adjacentes */
-.preview-table--nf th,
-.preview-table--nf td {
-  vertical-align: top;
-}
-
-/* Garante que a linha com input ativo apareça acima das linhas seguintes,
-   evitando que o dropdown de busca fique coberto por rows subsequentes */
-.preview-table--nf tbody tr:focus-within {
-  position: relative;
-  z-index: 2;
-}
 
 /* ── Modal de cadastro rápido de item via NF ─────────────────────────────── */
 .nf-modal-overlay {
