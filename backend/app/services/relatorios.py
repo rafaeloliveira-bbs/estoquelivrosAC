@@ -357,16 +357,41 @@ def relatorio_dashboard_por_filial(db: Session, filial_ids) -> list:
         if not filial:
             continue
 
-        estoque_sub = (
+        # Resolve livro_id: lote-based moves use Lote.livro_id, direct moves use Movimentacao.livro_id
+        livro_id_col = func.coalesce(Lote.livro_id, Movimentacao.livro_id)
+
+        mov_sub = (
             db.query(
-                Lote.livro_id,
-                func.coalesce(func.sum(Lote.quantidade_disponivel), 0).label("qtd_total"),
-                func.coalesce(
-                    func.sum(Lote.quantidade_disponivel * Lote.preco_custo_unitario), 0
-                ).label("valor_total"),
+                livro_id_col.label("livro_id"),
+                func.sum(
+                    case(
+                        (Movimentacao.tipo.in_(["compra", "devolucao"]), Movimentacao.quantidade),
+                        else_=0,
+                    )
+                ).label("entradas"),
+                func.sum(
+                    case(
+                        (Movimentacao.tipo.in_(["venda", "emprestimo"]), Movimentacao.quantidade),
+                        else_=0,
+                    )
+                ).label("saidas"),
+                func.sum(
+                    case(
+                        (Movimentacao.tipo == "compra",
+                         Movimentacao.quantidade * Movimentacao.preco_unitario),
+                        else_=0,
+                    )
+                ).label("valor_compras"),
+                func.sum(
+                    case(
+                        (Movimentacao.tipo == "compra", Movimentacao.quantidade),
+                        else_=0,
+                    )
+                ).label("qtd_compras"),
             )
-            .filter(Lote.filial_id == fid)
-            .group_by(Lote.livro_id)
+            .outerjoin(Lote, Movimentacao.lote_id == Lote.id)
+            .filter(Movimentacao.filial_id == fid)
+            .group_by(livro_id_col)
             .subquery()
         )
 
@@ -376,10 +401,13 @@ def relatorio_dashboard_por_filial(db: Session, filial_ids) -> list:
                 Livro.titulo,
                 Livro.isbn,
                 Livro.estoque_minimo,
-                func.coalesce(estoque_sub.c.qtd_total, 0).label("qtd_total"),
-                func.coalesce(estoque_sub.c.valor_total, 0).label("valor_total"),
+                Livro.preco_custo,
+                func.coalesce(mov_sub.c.entradas, 0).label("entradas"),
+                func.coalesce(mov_sub.c.saidas, 0).label("saidas"),
+                func.coalesce(mov_sub.c.valor_compras, 0).label("valor_compras"),
+                func.coalesce(mov_sub.c.qtd_compras, 0).label("qtd_compras"),
             )
-            .outerjoin(estoque_sub, estoque_sub.c.livro_id == Livro.id)
+            .outerjoin(mov_sub, mov_sub.c.livro_id == Livro.id)
             .filter(Livro.filial_id == fid, Livro.status == "ativo")
             .all()
         )
@@ -389,8 +417,14 @@ def relatorio_dashboard_por_filial(db: Session, filial_ids) -> list:
         total_unidades = 0
 
         for row in rows:
-            qtd = int(row.qtd_total)
-            valor = float(row.valor_total)
+            qtd = max(0, int(row.entradas) - int(row.saidas))
+            qtd_compras = int(row.qtd_compras)
+            preco_medio = (
+                float(row.valor_compras) / qtd_compras
+                if qtd_compras > 0
+                else float(row.preco_custo or 0)
+            )
+            valor = round(qtd * preco_medio, 2)
             valor_total_filial += valor
             total_unidades += qtd
             livros_data.append({
@@ -408,7 +442,6 @@ def relatorio_dashboard_por_filial(db: Session, filial_ids) -> list:
             reverse=True,
         )[:10]
 
-        sem_estoque_full = [l for l in livros_data if l["quantidade_total"] == 0]
         sem_estoque = [
             {
                 "livro_id": l["livro_id"],
@@ -416,7 +449,8 @@ def relatorio_dashboard_por_filial(db: Session, filial_ids) -> list:
                 "isbn": l["isbn"],
                 "estoque_minimo": l["estoque_minimo"],
             }
-            for l in sem_estoque_full
+            for l in livros_data
+            if l["quantidade_total"] == 0
         ]
 
         result.append({
