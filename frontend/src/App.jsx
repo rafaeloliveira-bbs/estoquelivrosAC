@@ -6,6 +6,7 @@ import Livros from './pages/Livros';
 import Relatorios from './pages/Relatorios';
 import Usuarios from './pages/Usuarios';
 import Filiais from './pages/Filiais';
+import Footer from './components/Footer';
 import { isAuthenticated, getUserRole } from './utils/auth';
 import apiClient from './api/client';
 import logo from './logodef.jpeg';
@@ -78,15 +79,18 @@ export default function App() {
   return (
     <Router>
       <Navigation />
-      <Routes>
-        <Route path="/login" element={<Login />} />
-        <Route path="/" element={<PrivateRoute><Dashboard /></PrivateRoute>} />
-        <Route path="/livros" element={<PrivateRoute><Livros /></PrivateRoute>} />
-        <Route path="/movimentacoes" element={<PrivateRoute><Movimentacoes /></PrivateRoute>} />
-        <Route path="/relatorios" element={<PrivateRoute><Relatorios /></PrivateRoute>} />
-        <Route path="/filiais" element={<PrivateRoute><Filiais /></PrivateRoute>} />
-        <Route path="/usuarios" element={<AdminRoute><Usuarios /></AdminRoute>} />
-      </Routes>
+      <main className="main-content">
+        <Routes>
+          <Route path="/login" element={<Login />} />
+          <Route path="/" element={<PrivateRoute><Dashboard /></PrivateRoute>} />
+          <Route path="/livros" element={<PrivateRoute><Livros /></PrivateRoute>} />
+          <Route path="/movimentacoes" element={<PrivateRoute><Movimentacoes /></PrivateRoute>} />
+          <Route path="/relatorios" element={<PrivateRoute><Relatorios /></PrivateRoute>} />
+          <Route path="/filiais" element={<PrivateRoute><Filiais /></PrivateRoute>} />
+          <Route path="/usuarios" element={<AdminRoute><Usuarios /></AdminRoute>} />
+        </Routes>
+      </main>
+      <Footer />
     </Router>
   );
 }

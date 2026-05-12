@@ -1,0 +1,127 @@
+.app-footer {
+  background: #554239;
+  margin-top: auto;
+  font-family: 'DM Sans', 'Segoe UI', sans-serif;
+}
+
+/* Color stripe */
+.footer-stripe {
+  display: flex;
+  height: 8px;
+  width: 100%;
+}
+
+.footer-stripe > div {
+  flex: 1;
+}
+
+.stripe-yellow  { background: #facc15; }
+.stripe-orange  { background: #fb923c; }
+.stripe-cyan    { background: #06b6d4; }
+.stripe-purple  { background: #6b21a8; }
+.stripe-green   { background: #4ade80; }
+
+/* ─── Desktop ─── */
+.footer-desktop {
+  display: flex;
+  flex-direction: column;
+  padding: 16px;
+  text-align: center;
+}
+
+.footer-logo-desktop {
+  height: auto;
+  margin: -16px auto 0;
+  display: block;
+}
+
+.footer-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 24px;
+  margin-top: 12px;
+}
+
+.footer-desc {
+  color: #fff;
+  font-size: 14px;
+  line-height: 1.8;
+  text-align: left;
+}
+
+.footer-btn {
+  color: #fff;
+  font-size: 14px;
+  font-weight: 700;
+  text-decoration: none;
+  padding: 4px 12px;
+  border-radius: 9999px;
+  white-space: nowrap;
+  transition: opacity 0.2s;
+}
+
+.footer-btn:hover {
+  opacity: 0.85;
+}
+
+.footer-btn-blue  { background: #3b82f6; }
+.footer-btn-green { background: #22c55e; }
+.footer-btn-dark  { background: #2c2c2c; }
+
+/* ─── Mobile ─── */
+.footer-mobile {
+  display: none;
+  flex-direction: column;
+  padding: 16px;
+  text-align: center;
+}
+
+.footer-logo-mobile {
+  height: auto;
+  margin: -16px auto 8px;
+  display: block;
+}
+
+.footer-mobile-links {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 8px 0;
+}
+
+.footer-mobile-btn {
+  font-size: 14px;
+  font-weight: 600;
+  text-decoration: none;
+  padding: 8px 12px;
+  border-radius: 6px;
+  background: #1e293b;
+  white-space: nowrap;
+}
+
+.footer-mobile-btn-blue  { color: #3b82f6; }
+.footer-mobile-btn-green { color: #22c55e; }
+.footer-mobile-btn-red   { color: #ef4444; }
+
+/* ─── Shared ─── */
+.footer-divider {
+  border: none;
+  border-top: 2px solid #fff;
+  margin: 16px 0 8px;
+}
+
+.footer-copyright {
+  color: #fff;
+  font-size: 14px;
+  text-align: center;
+  padding-bottom: 8px;
+}
+
+/* ─── Responsive ─── */
+@media (max-width: 767px) {
+  .footer-desktop { display: none; }
+  .footer-mobile  { display: flex; }
+}
