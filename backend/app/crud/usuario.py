@@ -31,7 +31,7 @@ def listar_usuarios(db: Session, filial_id: int = None, skip: int = 0, limit: in
     query = db.query(Usuario)
     if filial_id:
         query = query.filter(Usuario.filial_id == filial_id)
-    return query.offset(skip).limit(limit).all()
+    return query.order_by(Usuario.id).offset(skip).limit(limit).all()
 
 def atualizar_usuario(db: Session, usuario_id: int, usuario_data: UsuarioAtualizar):
     """Update user"""
